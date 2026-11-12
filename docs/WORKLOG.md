@@ -442,3 +442,135 @@
 - What I checked and how:
 - What was wrong / what I caught:
 - Decision I made (and if I overruled Claude, why):
+
+## 2026-11-12 – Step 5 – Decisions, table-context chunking, model client, pipeline, fake tests, eval estimate
+- Prompt (verbatim):
+  ```text
+  Step 5. Numbered items. NO Groq API calls in this step.
+
+  0. Record in docs/DECISIONS.md (decided by me, 2026-11-12), with the evidence file for each:
+     - Retrieval: BM25 on clean, section-aware chunks; no embeddings or cross-encoder in the project. Evidence: embed_bench_20261112T155413Z (embeddings worse than BM25 everywhere; MiniLM re-rank +~1 s TTFT and lower fact hit; TinyBERT +6.9 points only at medium, for a 1 GB dependency).
+     - Time to first token = first token of the final answer the user sees.
+     - The answer is drafted fully, checked, then streamed. The check is deterministic.
+     - On a failed check: one redraft, then refuse and show the retrieved passages. Never loop more.
+     - Router on openai/gpt-oss-20b, drafting on openai/gpt-oss-120b (limits are per model: cal-052).
+     - Refusal is decided by the model and the check, not by a retrieval score.
+
+  1. Chunking fix: in src/relay/chunking.py, repeat the table caption and header row at the top of every chunk that contains table rows. Re-run scripts/eval_retrieval.py and show me fact hit before/after, especially q10. In the FACTS table, change q20's essential string from "end-to-end" to "tokenizer-free".
+
+  2. Write src/relay/model_client.py: one async interface ModelClient.stream_chat(model, messages, max_tokens, reasoning_effort, timeout) that yields tokens and returns a final record (timings, status, headers, usage, retries). Implement GroqClient (reusing the calibration code) and FakeClient (scripted replies, delays, failures, 429s) for tests. All retry logic lives in ONE place and follows my policy in docs/DECISIONS.md (wait at least retry-after from the last accepted request, jitter only added on top).
+
+  3. Write src/relay/pipeline.py with these steps, each timed separately (waiting, working, retrying):
+     a) route: one call to gpt-oss-20b, max_tokens <= 150, JSON output: keywords, likely papers, in_scope (bool). If out of scope: refuse immediately (branch).
+     b) retrieve: BM25 tool call, wrapped with a timeout.
+     c) draft: one call to gpt-oss-120b, reasoning_effort low, tight max_tokens (propose a value from our calibration and say why). The prompt requires a [n] citation after every claim, referring to numbered passages, and a refusal sentence if the passages do not answer.
+     d) check: a deterministic tool: every [n] exists; every number in a cited sentence appears in passage n (normalized as in the fact-hit metric); a refusal is allowed. On failure: one redraft with the check's error message, then refuse with the passages.
+     e) stream the checked answer to the user, recording time to first token and total time.
+     Every request produces exactly one results.csv row with the columns in CLAUDE.md, plus a separate per-step trace file (results/raw/traces_<UTC>.jsonl) for the "where the time goes" section.
+
+  4. Tests with FakeClient only: a normal answer, a refusal, a check failure that is fixed by the redraft, a check failure that ends in refusal, a 429 on the draft call, a tool timeout. Show me the test output and one full trace.
+
+  5. Estimate (do not run) the real end-to-end evaluation: my 26 questions x 3 retrieval settings. Give requests and reserved tokens per model (charged as prompt + max_tokens), the expected duration at 8K tokens/minute, and whether it fits in one day's budget per model.
+
+  6. Add a Step 5 entry to docs/WORKLOG.md (my prompt verbatim).
+
+  End with the status of items 0-6.
+  ```
+- What Claude did:
+  - No Groq calls were made in this step.
+  - **Item 0:** added Retrieval [12, 13], Time to first token [3], Check versus streaming [5], Failed check [8], Models [1] and Refusal (restated) to DECISIONS.md, each with its evidence file. TTFT, check-then-stream and the failed-check rule have no evidence file ("none"). The "Still open" list was updated; 11 and 17 are marked as partly settled.
+  - **Item 1:** `ChunkConfig.table_context` (on by default). Every chunk holding table rows now starts with the caption's first sentence plus the table's header lines.
+    - Header = the lines before the first line with a numeric cell, at most 4. The full caption block stays in the corpus once.
+    - Captions are paired with their table (same page, within 2 blocks, forward first): 31/31 tables in the three papers paired correctly, including the captions placed below their tables (H-Net Tables 5 and 7, Moshi Table 18).
+    - The full caption was not repeated: captions run up to 185 tokens, against first sentences of at most 42.
+    - Table rows now stay one per line inside chunks; before, they were joined with spaces.
+    - q20's essential string changed to "tokenizer-free". `match_norm` moved to src/relay/textnorm.py, shared by the eval and the check.
+    - Raw files:
+      - before (`--no-table-context`): results/raw/retrieval_eval_20261112T221922Z.jsonl
+      - after: results/raw/retrieval_eval_20261112T221926Z.jsonl
+    - Fact hit, plain BM25, before → after:
+
+      | Setting | Fact hit |
+      |---|---|
+      | clean_sec small | 70.1 → 75.8% |
+      | clean_sec medium | 67.0 → 75.0% |
+      | clean_sec large | 79.5 → 79.5% |
+      | clean_flat small | 67.8 → 75.8% |
+      | clean_flat medium | 73.5 → 80.3% |
+      | clean_flat large | 82.6 → 80.3% |
+
+    - Recall is unchanged everywhere.
+    - q10 is now found at small and medium (0 → 1). q12 too (0.25 → 1).
+    - Regressions, from shifted chunk boundaries:
+      - clean_sec small: q14 loses "nearly 4", and q21 loses its second paper (all papers 2/5 → 1/5).
+      - clean_flat large: q08 loses "6.0 bytes per chunk".
+    - Chunk count: small 762 → 918, medium 403 → 424, large 233 → 237. No chunk exceeds its target.
+  - **Item 2:** src/relay/model_client.py.
+    - `stream_chat` returns a `ChatStream`: async-iterate it for tokens; `.record` (or `await .collect()`) gives the CallRecord: wait/retry/work/total ms, first-token ms, status, outcome, rate-limit headers, usage and server timings, retries, and every attempt.
+    - The only retry loop is `ModelClient._run`:
+      - Only 429s are retried, and only before any token arrives.
+      - The wait runs until last accepted request to that model + retry-after (from now if none yet), plus uniform jitter added on top.
+      - The wait is shared per model, through a RateGate. At most 3 retries, and never past the call timeout.
+    - Fixed during testing: on Windows the event-loop timer can wake about 16 ms early, so the gate re-sleeps until the precise clock has really passed the wait.
+    - GroqClient uses the same body and SSE parsing as calibrate.py; the key comes from .env and is never shown (`__repr__` hides it). FakeClient plays scripted replies, delays, 429s, stalls and network errors.
+  - **Item 3:** src/relay/pipeline.py and src/relay/recording.py: route → retrieve (BM25Tool, `asyncio.wait_for`) → draft → check (→ one redraft → recheck) → stream.
+    - Every step writes a trace line with wait_ms/retry_ms/work_ms, plus a closing "request" line. Exactly one results.csv row per request, including on exceptions; the CSV header is validated before appending.
+    - Statuses: answered, refused, refused_out_of_scope, refused_check_failed, tool_timeout, rate_limited, model_error, error.
+    - Proposed draft max_tokens is 400 (see the Step 5 report).
+  - **Item 4:** tests/test_pipeline.py (stdlib unittest, FakeClient only): 19 tests, all passing, stable over 3 more runs.
+    - The six requested scenarios, plus out-of-scope, exhausted 429 retries, router bad JSON, one row per request under concurrency, the retry-policy timing, jitter only added, per-model gates, timeouts, and check unit tests.
+    - The demo trace (real BM25 medium, fake models, 429 on the draft) was written to the scratchpad, not results/.
+  - **Item 5:** scripts/estimate_eval.py builds the exact prompts and makes no calls. 78 runs.
+    - 20b: 78 requests, 30,288 reserved tokens, about 2.8 min of the 8K TPM, 15% of 200K TPD.
+    - 120b: 78–156 requests, 130,521 (no redrafts) to 305,034 (every run redrafts) reserved tokens, about 15–37 min, 65–153% of 200K TPD.
+    - Requests are at most 15.6% of 1K RPD.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):
+
+## 2026-11-12 – Step 5b – Brief-exact results values, my pipeline decisions applied, one-setting estimate
+- Prompt (verbatim):
+  ```text
+  Step 5b. Numbered items. NO Groq API calls.
+
+  1. Fix results.csv values to match the brief exactly: status only in {ok, rate_limited, timeout, error}; source only in {real, stand-in}; answer_grade only in {correct, wrong, refused_correctly, refused_wrongly} or empty until graded. Map pipeline outcomes explicitly (e.g. answered -> ok, a refusal by the model -> ok with the refusal recorded in the trace, tool timeout -> timeout). FakeClient runs must not write source=fake to any results.csv: tests write only to a temp directory. Add a test that rejects any other value.
+
+  2. Apply my decisions and record them in docs/DECISIONS.md (decided by me, 2026-11-12):
+     - Draft max_tokens = 400 (evidence: cal-006..010, 118-300 output tokens, 1/5 hit 300).
+     - Router max_tokens = 200 (evidence: 2/5 small 20b calls hit 128 in calibration).
+     - Retrieval uses the user's question as is; the router only decides in/out of scope, and its keywords and papers are logged, not used. Reason: the retrieval evaluation measured the raw question.
+     - Request-limit 429 (body type "requests"): wait retry-after measured from the last accepted request, jitter on top. Token-limit 429 (body type "tokens"): wait retry-after measured from now, jitter on top. Evidence: retry_20261112T145223Z and cal-056/057.
+     - 500/502/503/498: retry once, with the same jitter. A client timeout is never retried.
+     - A sentence containing a number without a citation fails the check.
+     - Each run writes results/raw/run_<scenario>_<UTC>.csv; scripts/build_results.py rebuilds results/results.csv from all raw run files, sorted by start_time, never edited by hand.
+     Update the tests to cover each of these rules and show me the test output.
+
+  3. Re-run scripts/estimate_eval.py for ONE retrieval setting (26 questions) with these settings: requests and reserved tokens per model, low (no redraft) and high (all redraft).
+
+  4. Add a Step 5b entry to docs/WORKLOG.md (my prompt verbatim).
+
+  End with the status of items 1-4.
+  ```
+- What Claude did:
+  - No Groq calls were made in this step.
+  - **Item 1:** src/relay/recording.py now defines the allowed sets and `validate_row`. ResultsWriter rejects any other status, source or answer_grade value, and also checks start_time format and integer counts.
+    - The pipeline keeps a detailed outcome in the trace and maps it with `OUTCOME_TO_STATUS`:
+      - **ok:** answered, refused, refused_out_of_scope, refused_check_failed
+      - **timeout:** tool_timeout, model_timeout
+      - **rate_limited:** rate_limited
+      - **error:** model_error, error
+    - Sources: GroqClient writes "real". FakeClient has no "fake" value: it takes a valid label (default "stand-in"), and Pipeline raises if a FakeClient run would write its results or trace file anywhere under the repo's results/. Tests use a temporary directory only.
+  - **Item 2:** all seven decisions applied and recorded in DECISIONS.md.
+    - Draft max_tokens 400 and router max_tokens 200. The router's 128-token hits are cal-014 and cal-015.
+    - Retrieval now always uses the question as is. The route step's trace line logs keywords, papers and router_fallback.
+    - Fixed while testing: those route details used to be added after the trace line was written, so they never reached the file. The same was true of router_fallback in Step 5.
+    - 429 wait by body `error.type`. Calibration and the retry run show exactly "requests" and "tokens". An unknown type is measured from now (my choice, listed as open).
+    - 500/502/503/498 retried once after the jitter only. Timeouts, network errors, stream errors and other statuses are not retried.
+    - An uncited sentence with a number is now an error.
+    - `relay.recording.run_path` and the new scripts/build_results.py (refuses to write on a bad header, a bad value or a duplicate request_id; writes atomically).
+    - Open-decision bookkeeping: 26 is removed from "Still open". 6 and 18 stay open with notes, because they are only implied by the code.
+  - **Item 2 tests:** tests/test_pipeline.py now has 33 tests, all passing, stable over 3 more runs.
+  - **Item 3:** scripts/estimate_eval.py gained `--setting`; run once per setting (26 runs each). See the Step 5b report for the table.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):

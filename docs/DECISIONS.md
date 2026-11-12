@@ -45,6 +45,64 @@ Keep raw files untouched; submit a redacted copy produced by make_submission_cop
 ### Environment
 My terminal is cmd (Command Prompt), not PowerShell. Decided by me, 2026-11-12.
 
+### Retrieval [12, 13]
+BM25 on clean, section-aware chunks; no embeddings or cross-encoder in the project. Embeddings are worse than BM25 everywhere. MiniLM re-rank adds about 1 s to TTFT and lowers fact hit. TinyBERT gains +6.9 points only at medium, for a 1 GB dependency.
+Evidence: results/raw/embed_bench_20261112T155413Z.jsonl. Decided by me, 2026-11-12.
+
+### Time to first token [3]
+Time to first token = first token of the final answer the user sees.
+Evidence file: none (a definition, not a measurement). Decided by me, 2026-11-12.
+
+### Check versus streaming [5]
+The answer is drafted fully, checked, then streamed. The check is deterministic.
+Evidence file: none. Decided by me, 2026-11-12.
+
+### Failed check [8]
+On a failed check: one redraft, then refuse and show the retrieved passages. Never loop more.
+Evidence file: none. Decided by me, 2026-11-12.
+
+### Models [1]
+Router on openai/gpt-oss-20b, drafting on openai/gpt-oss-120b (limits are per model: cal-052).
+Evidence: results/raw/calibration_20261112T141038Z.jsonl, record cal-052. Decided by me, 2026-11-12.
+
+### Refusal (restated in Step 5)
+Refusal is decided by the model and the check, not by a retrieval score (same decision as "Refusal" above).
+Evidence: results/raw/retrieval_eval_20261112T154135Z.jsonl. Decided by me, 2026-11-12.
+
+### Draft max_tokens
+Draft max_tokens = 400.
+Evidence: results/raw/calibration_20261112T141038Z.jsonl, cal-006..010 (120b, low effort, ~1.5K tokens in): 118–300 output tokens, 1/5 hit the 300 cap. Decided by me, 2026-11-12.
+
+### Router max_tokens
+Router max_tokens = 200.
+Evidence: results/raw/calibration_20261112T141038Z.jsonl, 2/5 small 20b calls hit 128 (cal-014, cal-015). Decided by me, 2026-11-12.
+
+### Router use and retrieval query
+Retrieval uses the user's question as is. The router only decides in/out of scope; its keywords and papers are logged, not used. Reason: the retrieval evaluation measured the raw question. Decided by me, 2026-11-12.
+
+### Retries (Step 5b) [17]
+- Request-limit 429 (body type "requests"): wait retry-after measured from the last accepted request, jitter on top.
+- Token-limit 429 (body type "tokens"): wait retry-after measured from now, jitter on top.
+- Evidence: results/raw/retry_20261112T145223Z.jsonl, plus cal-056/057 in results/raw/calibration_20261112T141038Z.jsonl.
+- 500/502/503/498: retry once, with the same jitter.
+- A client timeout is never retried.
+
+Decided by me, 2026-11-12.
+
+### Check: numbers need citations
+A sentence containing a number without a citation fails the check. Decided by me, 2026-11-12.
+
+### How raw results flow into results.csv [26]
+Each run writes results/raw/run_<scenario>_<UTC>.csv. scripts/build_results.py rebuilds results/results.csv from all raw run files, sorted by start_time, never edited by hand. Decided by me, 2026-11-12.
+
 ## Still open
 
-From `docs/open_decisions.md`: 1, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26.
+From `docs/open_decisions.md`: 4, 6, 7, 11, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25.
+- 6: the pipeline now makes 2 model calls per request (router, draft), plus at most one redraft. Not recorded as a decision yet.
+- 18: the code retries per model call. Not recorded as a decision yet.
+- 11 is partly settled: section-aware chunking is decided, but the sizes are still the three Table 3 settings.
+- 17 is partly settled: the retry waits and the 5xx rule are decided. Still open:
+  - the 429 retry count (code: 3);
+  - the jitter size (code: 0–0.25 s);
+  - the wait when a 429 has no retry-after (code: 2.0 s);
+  - what an unknown 429 type does (code: measured from now).

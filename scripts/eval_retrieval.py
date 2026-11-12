@@ -3,6 +3,7 @@
 Usage (from the repo root, cmd):
     .venv\\Scripts\\python.exe scripts\\eval_retrieval.py            # run, write raw file, print summary
     .venv\\Scripts\\python.exe scripts\\eval_retrieval.py --facts    # print the essential-facts table and check it
+    .venv\\Scripts\\python.exe scripts\\eval_retrieval.py --no-table-context   # chunks without repeated table caption/header
 
 Metrics per (setting, question):
     hit / first_gold_rank   a retrieved chunk from the gold paper whose page range covers a gold page
@@ -27,10 +28,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import re
 import statistics
 import sys
-import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +39,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from relay.chunking import ALL_KINDS, DEFAULT_KINDS, ChunkConfig, build_chunks, load_blocks  # noqa: E402
 from relay.retrieval import BM25Retriever, Hit, PerPaperQuota, RetrievalPipeline  # noqa: E402
+from relay.textnorm import match_norm  # noqa: E402,F401  (shared with the pipeline's check)
 
 PAPERS = ["1706.03762v7", "2410.00037v1", "2507.07955v2"]
 A, M, H = PAPERS
@@ -80,17 +80,10 @@ FACTS: dict[str, list[tuple[str, str] | None]] = {
     "q17": [(H, "cosine similarity"), (H, "≥0.5"), (H, "semantic shift")],
     "q18": [(A, "LayerNorm(x + Sublayer(x))"), (M, "RMS normalization"), (H, "RMSNorm")],
     "q19": [(M, "Depth Transformer"), (H, "Mamba-2")],
-    "q20": [(H, "end-to-end"), (A, "byte-pair"), (M, "SentencePiece")],
+    "q20": [(H, "tokenizer-free"), (A, "byte-pair"), (M, "SentencePiece")],
     "q21": [(A, "ls = 0.1"), (H, "smoothing module"), None],
     "q22": [(H, "routing module"), (M, "80ms"), (A, "byte-pair")],
 }
-
-
-def match_norm(s: str) -> str:
-    """NFKC, unicode minus -> '-', lowercase, whitespace collapsed, no spaces around ^ × ·."""
-    s = unicodedata.normalize("NFKC", s).replace("−", "-").lower()
-    s = re.sub(r"\s+", " ", s)
-    return re.sub(r"\s*([\^×·])\s*", r"\1", s)
 
 
 def sha(p: Path) -> str:
@@ -101,10 +94,10 @@ def load_questions() -> list[dict]:
     return yaml.safe_load((ROOT / "eval" / "questions.yaml").read_text(encoding="utf-8"))
 
 
-def corpus_chunks(corpus: str, setting: str):
+def corpus_chunks(corpus: str, setting: str, table_context: bool = True):
     d, sec_aware, kinds = CORPORA[corpus]
     size, overlap, _, _ = SETTINGS[setting]
-    cfg = ChunkConfig(size, overlap, sec_aware, kinds)
+    cfg = ChunkConfig(size, overlap, sec_aware, kinds, table_context)
     return [c for p in PAPERS for c in build_chunks(load_blocks(ROOT / "data" / "papers" / d / f"{p}.jsonl"), cfg)]
 
 
@@ -196,6 +189,8 @@ def check_facts_table() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--facts", action="store_true", help="print and check the essential-facts table only")
+    ap.add_argument("--no-table-context", action="store_true",
+                    help="do not repeat table caption title + header in chunks (the pre-Step-5 chunking)")
     args = ap.parse_args()
     if args.facts:
         return check_facts_table()
@@ -210,7 +205,7 @@ def main() -> int:
         fh.flush()
 
     write({"type": "run_start", "time": datetime.now(timezone.utc).isoformat(), "script": "scripts/eval_retrieval.py",
-           "questions_sha256": sha(qpath), "corpora": {k: [v[0], v[1], sorted(v[2])] for k, v in CORPORA.items()},
+           "table_context": not args.no_table_context, "questions_sha256": sha(qpath), "corpora": {k: [v[0], v[1], sorted(v[2])] for k, v in CORPORA.items()},
            "settings": SETTINGS, "variants": ["plain", "quota_q1", "quota_q2"],
            "retriever": "BM25 k1=1.5 b=0.75 (src/relay/retrieval.py)", "facts": FACTS,
            "inputs_sha256": {f"{d}/{p}.jsonl": sha(ROOT / "data" / "papers" / d / f"{p}.jsonl")
@@ -219,7 +214,7 @@ def main() -> int:
     summary, by_label = [], {}
     for corpus in CORPORA:
         for setting, (size, overlap, k, rerank) in SETTINGS.items():
-            chunks = corpus_chunks(corpus, setting)
+            chunks = corpus_chunks(corpus, setting, not args.no_table_context)
             bm25 = BM25Retriever(chunks)
             variants = {"plain": RetrievalPipeline(bm25, final_k=k),
                         "quota_q1": PerPaperQuota(bm25, k=k, q=1, papers=PAPERS),
@@ -231,7 +226,8 @@ def main() -> int:
                     hits = pipe.search(q["question"])
                     rec = {"type": "result", "setting": label, "corpus": corpus, "piece_tokens": size,
                            "overlap_tokens": overlap, "section_aware": CORPORA[corpus][1], "pieces_fetched": k,
-                           "variant": vname, "rerank": rerank, "n_chunks": len(chunks), "qid": q["id"],
+                           "variant": vname, "rerank": rerank,
+                           "table_context": not args.no_table_context, "n_chunks": len(chunks), "qid": q["id"],
                            "qtype": q["type"], "should_refuse": q["should_refuse"], **score_question(q, hits)}
                     write(rec)
                     rows.append(rec)
