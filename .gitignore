@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Large local caches (embeddings, indexes, model downloads) - regenerable
+data/cache/
+*.cache
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

@@ -1,0 +1,102 @@
+E:\vaani>.venv\Scripts\python.exe scripts\calibrate.py
+Calibration plan (DRY RUN - no API calls). Token estimates: tiktoken o200k_harmony + 60 template tokens per request.
+
+part            model                  requests (max)   est. in   max out  upper bound
+--------------------------------------------------------------------------------------
+a               openai/gpt-oss-120b                10      8294      2140        10434
+a               openai/gpt-oss-20b                 10      8290      2140        10430
+b1              openai/gpt-oss-120b                35      2835       560         3395
+b3_shared_check openai/gpt-oss-20b                  1        81        16           97
+b2              openai/gpt-oss-120b                12       973       192         1165
+b4              openai/gpt-oss-120b                 5      9890        80         9970
+c               openai/gpt-oss-120b                 4      5956      1200         7156
+--------------------------------------------------------------------------------------
+subtotal        openai/gpt-oss-120b                66                            32120
+subtotal        openai/gpt-oss-20b                 11                            10527
+TOTAL                                              77                            42647
+
+Caps: 110 requests, 43000 tokens. Upper bound is WITHIN the caps (requests 77/110, tokens 42647/43000).
+The script enforces the caps before every request, so an over-budget plan stops early, it never exceeds them.
+
+Part a token pressure: 10 requests per model start within 135 s, ~10434 tokens (in + max out) per model. Docs say TPM = 8,000 per model.
+  The 5 retrieval-sized requests alone: ~8946 tokens in 60 s.
+b3 timing: right after the first 429 in b1, while 120b is limited.
+Sequence: a(120b) -> a(20b) -> 60 s cooldown -> b1 [+b3] -> b2 -> 60 s cooldown -> b4 -> 60 s cooldown -> c
+
+Nothing was sent. Re-run with --go to make real calls.
+
+E:\vaani>.venv\Scripts\python.exe scripts\calibrate.py --go
+Writing to results\raw\calibration_20261112T141038Z.jsonl
+-- part a on openai/gpt-oss-120b
+  cal-001 a                openai/gpt-oss-120b  status=200 total=748.4ms tokens=182/24 rem_req=999 rem_tok=7690
+  cal-002 a                openai/gpt-oss-120b  status=200 total=413.9ms tokens=182/42 rem_req=998 rem_tok=7690
+  cal-003 a                openai/gpt-oss-120b  status=200 total=1468.8ms tokens=183/108 rem_req=997 rem_tok=7689
+  cal-004 a                openai/gpt-oss-120b  status=200 total=453.8ms tokens=184/38 rem_req=996 rem_tok=7774
+  cal-005 a                openai/gpt-oss-120b  status=200 total=528.5ms tokens=184/128 rem_req=995 rem_tok=7708
+  cal-006 a                openai/gpt-oss-120b  status=200 total=1224.8ms tokens=1498/214 rem_req=994 rem_tok=6460
+  cal-007 a                openai/gpt-oss-120b  status=200 total=1217.0ms tokens=1502/118 rem_req=993 rem_tok=6370
+  cal-008 a                openai/gpt-oss-120b  status=200 total=1055.7ms tokens=1509/244 rem_req=992 rem_tok=6363
+  cal-009 a                openai/gpt-oss-120b  status=200 total=1551.6ms tokens=1503/300 rem_req=991 rem_tok=6253
+  cal-010 a                openai/gpt-oss-120b  status=200 total=1612.3ms tokens=1502/215 rem_req=990 rem_tok=6474
+-- part a on openai/gpt-oss-20b
+  cal-011 a                openai/gpt-oss-20b   status=200 total=590.1ms tokens=184/42 rem_req=999 rem_tok=7703
+  cal-012 a                openai/gpt-oss-20b   status=200 total=2193.8ms tokens=186/86 rem_req=998 rem_tok=7772
+  cal-013 a                openai/gpt-oss-20b   status=200 total=675.5ms tokens=184/106 rem_req=997 rem_tok=7698
+  cal-014 a                openai/gpt-oss-20b   status=200 total=1470.2ms tokens=184/128 rem_req=996 rem_tok=7710
+  cal-015 a                openai/gpt-oss-20b   status=200 total=622.8ms tokens=183/128 rem_req=995 rem_tok=7689
+  cal-016 a                openai/gpt-oss-20b   status=200 total=1072.0ms tokens=1499/126 rem_req=994 rem_tok=6415
+  cal-017 a                openai/gpt-oss-20b   status=200 total=1202.0ms tokens=1499/243 rem_req=993 rem_tok=6373
+  cal-018 a                openai/gpt-oss-20b   status=200 total=1013.6ms tokens=1509/179 rem_req=992 rem_tok=6365
+  cal-019 a                openai/gpt-oss-20b   status=200 total=2039.9ms tokens=1501/300 rem_req=991 rem_tok=6256
+  cal-020 a                openai/gpt-oss-20b   status=200 total=893.1ms tokens=1502/136 rem_req=990 rem_tok=6198
+-- cooldown 60 s before b1
+-- part b1 (120b) until first 429
+  cal-021 b1               openai/gpt-oss-120b  status=200 total=609.0ms tokens=93/16 rem_req=991 rem_tok=7891
+  cal-022 b1               openai/gpt-oss-120b  status=200 total=528.0ms tokens=92/16 rem_req=990 rem_tok=7829
+  cal-023 b1               openai/gpt-oss-120b  status=200 total=337.0ms tokens=91/16 rem_req=989 rem_tok=7784
+  cal-024 b1               openai/gpt-oss-120b  status=200 total=510.2ms tokens=93/15 rem_req=988 rem_tok=7730
+  cal-025 b1               openai/gpt-oss-120b  status=200 total=354.8ms tokens=90/16 rem_req=987 rem_tok=7682
+  cal-026 b1               openai/gpt-oss-120b  status=200 total=699.6ms tokens=92/16 rem_req=986 rem_tok=7643
+  cal-027 b1               openai/gpt-oss-120b  status=200 total=915.9ms tokens=94/16 rem_req=985 rem_tok=7622
+  cal-028 b1               openai/gpt-oss-120b  status=200 total=952.8ms tokens=92/16 rem_req=984 rem_tok=7572
+  cal-029 b1               openai/gpt-oss-120b  status=200 total=522.4ms tokens=91/16 rem_req=983 rem_tok=7492
+  cal-030 b1               openai/gpt-oss-120b  status=200 total=655.6ms tokens=91/16 rem_req=982 rem_tok=7438
+  cal-031 b1               openai/gpt-oss-120b  status=200 total=564.4ms tokens=90/16 rem_req=981 rem_tok=7386
+  cal-032 b1               openai/gpt-oss-120b  status=200 total=469.8ms tokens=93/16 rem_req=980 rem_tok=7339
+  cal-033 b1               openai/gpt-oss-120b  status=200 total=458.2ms tokens=89/16 rem_req=979 rem_tok=7294
+  cal-034 b1               openai/gpt-oss-120b  status=200 total=420.3ms tokens=94/16 rem_req=978 rem_tok=7240
+  cal-035 b1               openai/gpt-oss-120b  status=200 total=610.7ms tokens=90/16 rem_req=977 rem_tok=7188
+  cal-036 b1               openai/gpt-oss-120b  status=200 total=494.0ms tokens=92/16 rem_req=976 rem_tok=7125
+  cal-037 b1               openai/gpt-oss-120b  status=200 total=511.4ms tokens=92/16 rem_req=975 rem_tok=7068
+  cal-038 b1               openai/gpt-oss-120b  status=200 total=297.2ms tokens=92/16 rem_req=974 rem_tok=7021
+  cal-039 b1               openai/gpt-oss-120b  status=200 total=445.3ms tokens=94/16 rem_req=973 rem_tok=6962
+  cal-040 b1               openai/gpt-oss-120b  status=200 total=232.0ms tokens=92/16 rem_req=972 rem_tok=6910
+  cal-041 b1               openai/gpt-oss-120b  status=200 total=369.4ms tokens=92/16 rem_req=971 rem_tok=6873
+  cal-042 b1               openai/gpt-oss-120b  status=200 total=270.6ms tokens=94/16 rem_req=970 rem_tok=6816
+  cal-043 b1               openai/gpt-oss-120b  status=200 total=232.3ms tokens=92/16 rem_req=969 rem_tok=6757
+  cal-044 b1               openai/gpt-oss-120b  status=200 total=566.3ms tokens=91/16 rem_req=968 rem_tok=6714
+  cal-045 b1               openai/gpt-oss-120b  status=200 total=294.8ms tokens=94/16 rem_req=967 rem_tok=6660
+  cal-046 b1               openai/gpt-oss-120b  status=200 total=501.8ms tokens=92/16 rem_req=966 rem_tok=6608
+  cal-047 b1               openai/gpt-oss-120b  status=200 total=712.5ms tokens=92/16 rem_req=965 rem_tok=6588
+  cal-048 b1               openai/gpt-oss-120b  status=200 total=840.3ms tokens=94/16 rem_req=964 rem_tok=6508
+  cal-049 b1               openai/gpt-oss-120b  status=200 total=765.4ms tokens=93/15 rem_req=963 rem_tok=6495
+  cal-050 b1               openai/gpt-oss-120b  status=200 total=456.7ms tokens=94/15 rem_req=962 rem_tok=6424
+  cal-051 b1               openai/gpt-oss-120b  status=429 total=267.5ms tokens=None/None rem_req=962 rem_tok=None
+-- part b3_shared_check (20b), right after first 429
+  cal-052 b3_shared_check  openai/gpt-oss-20b   status=200 total=758.7ms tokens=91/16 rem_req=989 rem_tok=7893
+-- part b2 (120b) every 5 s until 200
+  cal-053 b2               openai/gpt-oss-120b  status=200 total=635.9ms tokens=92/16 rem_req=961 rem_tok=7102
+-- cooldown 60 s before b4
+-- part b4 (120b) 5 x ~2K tokens at once
+  cal-057 b4               openai/gpt-oss-120b  status=429 total=298.6ms tokens=None/None rem_req=958 rem_tok=2010
+  cal-056 b4               openai/gpt-oss-120b  status=429 total=361.5ms tokens=None/None rem_req=958 rem_tok=2011
+  cal-058 b4               openai/gpt-oss-120b  status=200 total=809.8ms tokens=1997/16 rem_req=959 rem_tok=3992
+  cal-055 b4               openai/gpt-oss-120b  status=200 total=841.6ms tokens=1981/16 rem_req=960 rem_tok=6003
+  cal-054 b4               openai/gpt-oss-120b  status=200 total=1285.8ms tokens=1969/16 rem_req=958 rem_tok=2008
+-- cooldown 60 s before c
+-- part c (120b) reasoning_effort=medium
+  cal-059 c                openai/gpt-oss-120b  status=200 total=1059.5ms tokens=1498/300 rem_req=957 rem_tok=6202
+  cal-060 c                openai/gpt-oss-120b  status=200 total=978.7ms tokens=1503/270 rem_req=956 rem_tok=5024
+  cal-061 c                openai/gpt-oss-120b  status=200 total=2139.0ms tokens=1508/300 rem_req=955 rem_tok=3719
+  cal-062 c                openai/gpt-oss-120b  status=200 total=1163.9ms tokens=1501/300 rem_req=954 rem_tok=2432
+Run completed. Requests sent: 62, tokens used: 36397.
