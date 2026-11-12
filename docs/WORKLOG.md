@@ -327,7 +327,7 @@
 - Note: I renamed results/raw/calibration_20261112T141038Z_console.txt.txt to remove a double extension added by Notepad. Contents unchanged.
 
 ## 2026-11-12 – Step Q – Evaluation questions
-- Prompt (verbatim): Not a Claude Code step. Drafted with Claude (claude.ai) from the three PDFs I uploaded; draft kept in eval/questions_draft.yaml.
+- Prompt (verbatim): Not a Claude Code step. Drafted with Claude (claude.ai) from the three PDFs I uploaded; the draft is in that conversation's history. I edited it in place into eval/questions.yaml (only change: verified: true on each question).
 - What I did: Verified every question in the PDFs and set verified: true on each. Final set in eval/questions.yaml.  kept 26 of 26.
 - What I checked and how: For each question, Ctrl+F in the PDF on a key fact (e.g. "4000", "0.03", "65%") and checked the page number printed at the bottom of the page. For the 4 refusal questions, searched each PDF for the key terms ("Japanese", "3-stage", "French", "SoundStorm") to confirm the papers do not answer them.
 - What I found: While drafting, Claude (claude.ai) noticed that two papers contradict themselves. I verified both in the PDFs: Attention gives EN-FR BLEU as 41.8 (abstract, Table 2) but 41.0 (section 6.1, page 8); Dynamic Chunking gives DNA data efficiency as "nearly 4×" (abstract) but 3.6× (pages 4 and 17). Kept as q13/q14: a naive retriever cites whichever chunk it finds first, with full confidence, which gives a fourth failure mode for the naive-retriever section.
