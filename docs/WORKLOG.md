@@ -333,3 +333,112 @@
 - What I found: While drafting, Claude (claude.ai) noticed that two papers contradict themselves. I verified both in the PDFs: Attention gives EN-FR BLEU as 41.8 (abstract, Table 2) but 41.0 (section 6.1, page 8); Dynamic Chunking gives DNA data efficiency as "nearly 4×" (abstract) but 3.6× (pages 4 and 17). Kept as q13/q14: a naive retriever cites whichever chunk it finds first, with full confidence, which gives a fourth failure mode for the naive-retriever section.
 - What was wrong / what I caught: Nothing wrong found during verification: all 26 answers and page numbers matched the PDFs.
 - Decision I made (and if I overruled Claude, why): Kept all 26 drafted questions unchanged, because every one verified and the set already covers the failure types I want to measure (single facts, exponents in tables, explanations, cross-paper, terminology traps, refusals including a references trap). The question set is assistant-drafted; my contribution here is verification.
+## 2026-11-12 – Step 4 – Clean extraction, chunking, BM25, question schema, retrieval eval
+- Prompt (verbatim):
+
+  ```text
+  Step 4. Numbered items. No API calls in this step. My verified questions are in eval/questions.yaml (do not modify it).
+
+  1. Write scripts/clean_papers.py. It reads the PDFs again with PyMuPDF (span-level, so you can see font size and superscript flags) and writes data/papers/clean/<id>vN.jsonl. Never modify data/papers/extracted/. Fix the problems from docs/retriever_pitfalls.md and tag each fix with its pitfall number:
+     - Detect "References" and appendix headings from the text itself, and give those blocks the right section instead of "Conclusion".
+     - Tag every block with a kind: body, reference, table, figure_text, equation, header_footer, page_number.
+     - Render superscripts as ^ (e.g. 10^20) and subscripts as _ (d_k) using span flags and size.
+     - Join words split by hyphens at line breaks.
+     - Keep the original text in a raw_text field and add a normalized field (NFKC, so mathematical italic letters become plain letters).
+     - Keep section_path and add the section number when the heading block has one.
+     Then show me before/after counts per kind and per paper, and 2 concrete before/after examples for each fix, including Attention's Table 2 FLOPs (3.3 · 10^18), Eq. 1, and H-Net's learning rates (6.25 × 10^-4).
+
+  2. Write src/relay/chunking.py: builds chunks from the clean blocks with parameters: target size in tokens, overlap, section-aware or not, and which kinds to include (by default exclude reference, page_number, header_footer, figure_text). Every chunk carries paper id, section_path, section number, and page range, for citations.
+
+  3. Write src/relay/retrieval.py with BM25 (explain which library or why your own). Design it so a second retriever (local embeddings) and an optional re-ranker can be plugged in later, but don't install those yet. Instead, tell me the install size and CPU speed on Windows of sentence-transformers with all-MiniLM-L6-v2 and a small cross-encoder, so I can decide.
+
+  4. Write eval/SCHEMA.md describing the format of eval/questions.yaml as it is now: id, type (single_fact | table_number | explanation | cross_paper | term_trap | unanswerable), question, should_refuse, key_facts, gold (list of paper, section, page), note, verified. Validate my file against it and report any problems, without editing it.
+
+  5. Write scripts/eval_retrieval.py: for each question in eval/questions.yaml and each retrieval setting in a small config (piece size, pieces fetched, re-rank yes/no), report whether a gold page was retrieved (recall@k, a hit if any retrieved chunk's page range covers a gold page of the right paper), the rank of the first gold hit, and the context size in tokens that would be sent to the model. Unanswerable questions: report the top score, so we can later choose a refusal threshold. Run it with 3 BM25 settings of your choice (small, medium, large pieces) on BOTH data/papers/extracted (the naive baseline) and data/papers/clean. Output to results/raw/retrieval_eval_<UTC>.jsonl plus a printed table, and list the questions that fail in every setting.
+
+  6. Add a Step 4 entry to docs/WORKLOG.md (my prompt verbatim).
+
+  End with the status of items 1-6.
+  ```
+- What Claude did:
+  - **Page check.** Printed page numbers equal the PDF page index in all three papers, so gold pages map directly.
+  - **scripts/clean_papers.py**
+    - Reads rawdict spans and chars, writes data/papers/clean/. data/papers/extracted/ is untouched.
+    - Blocks: 539/1062/865 extracted → 513/989/786 clean.
+    - Blocks labelled "Conclusion": 378/254/26 → 6/8/6.
+    - Table regions come from find_tables(lines) and are rendered row by row with " | ".
+    - Equations are merged at char level, with fraction bars from page drawings.
+    - Figure text comes from cluster_drawings + images + rotated lines.
+    - Headers/footers are repeated margin text; the arXiv stamp regex was narrowed after it also matched reference entries.
+    - Hyphen joins use the paper's own vocabulary, keeping compounds seen elsewhere (13 kept).
+    - Pitfall 7: tables and captions are moved to the section of their first mention.
+    - Several iterations, all caught in output:
+      - Eq. 1 lost its left half
+      - stacked sub/sup interleaved
+      - `10^-^4` double marker
+      - wrong reference size in small-exponent lines
+      - `<|endoftext|>` crashing tiktoken
+      - a heredoc patch that broke a string literal
+    - Known leftovers: display math with large operators (H-Net eqs 8–11, Attention's inline 1/√d_k fraction) is still garbled. Moshi's p19 prompt templates (framed boxes) are tagged figure_text.
+  - **src/relay/chunking.py**: target / overlap / section_aware / include_kinds; each chunk has a citation (paper, section number + title, pages). Separator tokens counted, so no chunk exceeds its target.
+  - **src/relay/retrieval.py**: own BM25 (Okapi, k1 1.5, b 0.75), Retriever/Reranker protocols, RRF fusion, a fetch_k → rerank → final_k pipeline.
+  - **Embedding/re-ranker sizes** (from the PyPI and Hugging Face APIs, nothing installed): about 210 MB of Windows wheels (torch 2.15.0 is 126.7 MB); models are 90.9 MB (MiniLM-L6, MiniLM cross-encoder) and 17.6 MB (TinyBERT-L2 cross-encoder). CPU speeds are estimates only, not measured.
+  - **Schema**: eval/SCHEMA.md and scripts/validate_questions.py (read-only; SHA-256 unchanged before and after).
+    - 26 questions.
+    - The only error: `verified` is missing on all 26.
+    - 0 warnings: every numbered gold section contains its gold page in the clean extraction.
+  - **Retrieval eval**: scripts/eval_retrieval.py over 3 corpora (naive, clean_flat, clean_sec) × 3 BM25 settings (128/16/k8, 256/32/k5, 512/64/k3). Output: results/raw/retrieval_eval_20261112T154135Z.jsonl.
+    - Recall@k 81.8–90.9% everywhere.
+    - q22 fails in every setting.
+    - The unanswerable near-misses q23/q25 get top scores (17–25) above the answerable median (~17), so a BM25 score threshold cannot drive refusals.
+    - Naive retrieval returns the Moshi reference list (labelled "Conclusion") for q26.
+  - Added pyyaml 6.0.3 to requirements.txt; added src/relay/__init__.py.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):
+
+## 2026-11-12 – Step 4b – verified flags, fact hit, per-paper quota, embedding benchmark
+- Prompt (verbatim):
+
+  ```text
+  Step 4b. Numbered items. No Groq API calls.
+
+  1. I verified all 26 questions in the PDFs on 2026-11-12, but the verified flags were not saved in eval/questions.yaml. I authorise you to make exactly one change to that file: add "verified: true" as the last field of each of the 26 questions. Change nothing else. Show me the diff, then re-run scripts/validate_questions.py.
+
+  2. Add a stricter metric to scripts/eval_retrieval.py: "fact hit" = for each answerable question, the share of its key_facts whose essential number or term appears in the retrieved context (normalize both sides: NFKC, unicode minus to "-", ignore spaces around ^, ×, ·). For each question, define the essential string(s) in a small explicit table in the script (e.g. q10: "3.3 · 10^18"), and show me that table so I can check it. Re-run on naive, clean_flat and clean_sec, and list the questions where naive hits the page but misses the fact.
+
+  3. Add a retrieval variant "per_paper_quota": top-q chunks from each paper (try q=1 and q=2) merged with the global top-k, duplicates removed. Report recall, fact hit, cross-paper "all gold papers retrieved", and context tokens, against the plain BM25 settings.
+
+  4. Benchmark embeddings and re-ranking for real, OUTSIDE the project: create a throwaway venv in %TEMP%, install sentence-transformers there, and time on my CPU: embedding all clean chunks once (all-MiniLM-L6-v2), one query embedding, and cross-encoder re-ranking of 20 candidates with ms-marco-MiniLM-L-6-v2 and ms-marco-TinyBERT-L-2-v2. Report p50/p95 over 20 runs, install size on disk, and recall/fact hit on my questions for: embeddings alone, BM25+embeddings fusion, BM25 + cross-encoder re-rank. Do not add anything to the project's requirements.txt. Delete nothing in the project.
+
+  5. Add a Step 4b entry to docs/WORKLOG.md (my prompt verbatim). Also add to docs/DECISIONS.md: "Refusal is not decided by retrieval score: near-miss unanswerable questions (q23, q25) score higher than the answerable median. Refusal comes from the model reading the passages and from the check step. Decided by me from retrieval_eval_20261112T154135Z, 2026-11-12."
+
+  End with the status of items 1-5.
+  ```
+- What Claude did:
+  - **Item 1:** added 26 × `  verified: true` after each question's last field. CRLF preserved; diff shows 26 insertions and 0 other changes; the validator reports 0 errors and 0 warnings. A later repeat of the same request was not applied twice; the existing diff was shown instead.
+  - **Item 2:** added a FACTS table (one essential string per key fact, tied to a paper; q21's third fact marked not retrievable) and `--facts`, which checks every string exists in its paper's clean text.
+    - All strings found; all on a gold page except q22's byte-pair, whose paper has no gold page in q22.
+    - Naive hits the page but misses the fact for q03 (10^-9), q10 (3.3 · 10^18) and q11 (6.25/5.0 × 10^-4) in every setting, plus q06/q14/q17/q18/q19/q21 in some.
+    - Clean small/medium also miss q10's number: the table's header row and the base-model row land in different small chunks.
+  - **Item 3:** added `PerPaperQuota` to src/relay/retrieval.py. Run file: results/raw/retrieval_eval_20261112T154833Z.jsonl.
+    - Quota raises fact hit and "all papers" modestly at +15–120% context tokens.
+    - clean_sec/large/quota_q2: recall 86.4%, fact hit 86.4%, all papers 2/5, 2,271 tokens on average (plain: 81.8%, 79.5%, 0/5, 1,049).
+  - **Item 4:** throwaway venv at %TEMP%\relay_embed_bench (sentence-transformers 6.3.0, torch 2.15.0+cpu, 4 threads, Intel Family 6 Model 140, 8 logical CPUs). Script: scripts/bench_embeddings.py (runs only there). Raw: results/raw/embed_bench_20261112T155413Z.jsonl.
+    - Timings, p50/p95 over 20 runs:
+
+      | What | p50 | p95 |
+      |---|---|---|
+      | Corpus embedding, 762 / 403 / 233 chunks | 26.2 / 15.1 / 8.6 s | 37.1 / 24.8 / 9.2 s |
+      | Query embedding | 9.7 ms | 17.9 ms |
+      | MiniLM-L6 re-rank of 20 | 944 ms | 983 ms |
+      | TinyBERT-L2 re-rank of 20 | 62 ms | 78 ms |
+
+    - Disk: venv 1,078 MB (torch 539 MB); model cache 191 MB by `du`. The script's 603 MB double-counted the cache's snapshot links.
+    - Embeddings alone are worse than BM25 everywhere, but they find q22's gold page. RRF fusion never improves recall and lowers fact hit. TinyBERT re-rank helps only at medium (fact hit 67.0 → 73.9%); MiniLM re-rank is worse and costs about 1 s.
+    - Caveat: MiniLM's max_seq_length is 256 wordpieces, so medium and large chunks are truncated when embedded.
+    - Nothing was added to requirements.txt and nothing in the project was deleted.
+  - **Item 5:** added the refusal decision to DECISIONS.md.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):

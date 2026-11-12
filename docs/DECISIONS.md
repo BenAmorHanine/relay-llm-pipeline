@@ -36,6 +36,9 @@ Files named <id>vN.jsonl, so the version travels with the data. Decided by me, 2
 ### Retry policy
 Retry policy: wait at least retry-after measured from the last accepted request; jitter only added on top, never subtracted. Decided by me from retry_20261112T145223Z, 2026-11-12.
 
+### Refusal
+Refusal is not decided by retrieval score: near-miss unanswerable questions (q23, q25) score higher than the answerable median. Refusal comes from the model reading the passages and from the check step. Decided by me from retrieval_eval_20261112T154135Z, 2026-11-12.
+
 ### Raw results and submission
 Keep raw files untouched; submit a redacted copy produced by make_submission_copy.py. Decided by me, 2026-11-12.
 
