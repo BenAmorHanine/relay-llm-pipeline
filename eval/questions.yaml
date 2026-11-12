@@ -1,0 +1,250 @@
+# Drafted with Claude (claude.ai) from the three PDFs, 2026-11-12.
+# Every item verified by me in the PDF before use (verified: true).
+# Pages = numbers printed on the page.
+
+# ---------- Single facts ----------
+- id: q01
+  type: single_fact
+  question: "How many attention heads does the base Transformer use, and what is the dimension of each head's keys and values?"
+  should_refuse: false
+  key_facts: ["h = 8 heads", "d_k = d_v = 64"]
+  gold: [{paper: "1706.03762v7", section: "3.2.2 Multi-Head Attention", page: 5}]
+  
+
+- id: q02
+  type: single_fact
+  question: "How long were the base and big Transformer models trained, and on what hardware?"
+  should_refuse: false
+  key_facts: ["8 NVIDIA P100 GPUs", "base: 100,000 steps, 12 hours", "big: 300,000 steps, 3.5 days"]
+  gold: [{paper: "1706.03762v7", section: "5.2 Hardware and Schedule", page: 7}]
+  
+
+- id: q03
+  type: single_fact
+  question: "What warmup schedule and Adam settings were used to train the Transformer?"
+  should_refuse: false
+  key_facts: ["warmup_steps = 4000", "beta1 = 0.9, beta2 = 0.98, epsilon = 10^-9", "learning rate decays with inverse square root of step"]
+  gold: [{paper: "1706.03762v7", section: "5.3 Optimizer", page: 7}]
+  note: "epsilon = 10^-9 is a superscript; flattened extraction gives 10-9 or 109"
+  
+
+- id: q04
+  type: single_fact
+  question: "What is the frame rate and bitrate of the Mimi codec, and how many quantizers does it use?"
+  should_refuse: false
+  key_facts: ["12.5 Hz", "Q = 8 quantizers, codebook size 2048", "1.1 kbps"]
+  gold: [{paper: "2410.00037v1", section: "3.3.1 Architecture (Quantization rate)", page: 11}]
+  
+
+- id: q05
+  type: single_fact
+  question: "What latency does Moshi achieve, and what design choice sets it?"
+  should_refuse: false
+  key_facts: ["160 ms theoretical, 200 ms in practice", "acoustic delay of 1 step (80 ms frames) after finetuning"]
+  gold:
+    - {paper: "2410.00037v1", section: "Abstract", page: 1}
+    - {paper: "2410.00037v1", section: "5.3 Ablations on generative modeling (Discussion)", page: 26}
+  
+
+- id: q06
+  type: single_fact
+  question: "In Moshi's Inner Monologue text stream, what share of the tokens are padding?"
+  should_refuse: false
+  key_facts: ["about 65% in English conversational speech", "PAD and EPAD special tokens"]
+  gold: [{paper: "2410.00037v1", section: "3.4.4 Inner Monologue", page: 16}]
+  
+
+- id: q07
+  type: single_fact
+  question: "What weight is given to the ratio loss in H-Net, and what does that loss control?"
+  should_refuse: false
+  key_facts: ["alpha = 0.03 in all experiments", "guides the model toward a target compression ratio N"]
+  gold: [{paper: "2507.07955v2", section: "2.2.3 Ratio Loss", page: 8}]
+  
+
+- id: q08
+  type: single_fact
+  question: "How many bytes per chunk does H-Net's dynamic chunking end up with, compared with SpaceByte's spacelike heuristic?"
+  should_refuse: false
+  key_facts: ["about 4.5-5 bytes per chunk, similar to BPE", "SpaceByte about 6.0 bytes per chunk on English"]
+  gold:
+    - {paper: "2507.07955v2", section: "1 Introduction", page: 3}
+    - {paper: "2507.07955v2", section: "3 Experiments (Models)", page: 10}
+  
+
+- id: q09
+  type: single_fact
+  question: "After how many training bytes does the 2-stage H-Net overtake the tokenized Transformer at XL scale?"
+  should_refuse: false
+  key_facts: ["30B bytes (2-stage)", "100B for 1-stage, 200B for H-Net (space)"]
+  gold: [{paper: "2507.07955v2", section: "3.1 Language Modeling (XL Scale)", page: 12}]
+  
+
+# ---------- Numbers in tables / with exponents ----------
+- id: q10
+  type: table_number
+  question: "What was the training cost in FLOPs of the base Transformer on English-German?"
+  should_refuse: false
+  key_facts: ["3.3 x 10^18 FLOPs"]
+  gold: [{paper: "1706.03762v7", section: "6.1 Machine Translation, Table 2", page: 8}]
+  note: "Flattened extraction turns 10^18 into 1018 (pitfall 2)"
+  
+
+- id: q11
+  type: table_number
+  question: "What peak learning rates were used for the Large and XL H-Net experiments?"
+  should_refuse: false
+  key_facts: ["6.25 x 10^-4 for Large", "5.0 x 10^-4 for XL"]
+  gold: [{paper: "2507.07955v2", section: "3 Experiments (Experimental Setup)", page: 12}]
+  note: "Exponent trap, and the passage starts at the top of page 12 mid-sentence"
+  
+
+- id: q12
+  type: table_number
+  question: "How much does Inner Monologue change Moshi's spoken question-answering accuracy?"
+  should_refuse: false
+  key_facts: ["Web Questions 26.6 vs 9.2", "LlaMA Questions 62.3 vs 21.0", "Audio TriviaQA 22.8 vs 7.3", "roughly triples accuracy"]
+  gold: [{paper: "2410.00037v1", section: "5.5 Spoken question answering, Table 8", page: 29}]
+  
+
+- id: q13
+  type: table_number
+  question: "What BLEU score did the big Transformer reach on WMT 2014 English-to-French?"
+  should_refuse: false
+  key_facts: ["41.8 in the abstract and Table 2", "section 6.1 says 41.0: the paper is inconsistent, a good answer reports both"]
+  gold:
+    - {paper: "1706.03762v7", section: "Abstract", page: 1}
+    - {paper: "1706.03762v7", section: "6.1 Machine Translation", page: 8}
+  note: "Self-contradiction inside one paper: a naive retriever cites one value confidently"
+  
+
+- id: q14
+  type: table_number
+  question: "How much more data-efficient is H-Net than isotropic models on DNA?"
+  should_refuse: false
+  key_facts: ["3.6x in sections 1 and 3.2 / Figure 6", "abstract says 'nearly 4x': a good answer notes the difference"]
+  gold:
+    - {paper: "2507.07955v2", section: "1 Introduction", page: 4}
+    - {paper: "2507.07955v2", section: "3.2 DNA, Figure 6", page: 17}
+    - {paper: "2507.07955v2", section: "Abstract", page: 1}
+  note: "Abstract rounds the number differently from the body"
+  
+
+# ---------- Explanations ----------
+- id: q15
+  type: explanation
+  question: "Why does the Transformer divide the attention dot products by the square root of d_k?"
+  should_refuse: false
+  key_facts: ["for large d_k, dot products grow large", "pushes softmax into regions with tiny gradients", "q.k has variance d_k if components are unit-variance"]
+  gold: [{paper: "1706.03762v7", section: "3.2.1 Scaled Dot-Product Attention (and footnote 4)", page: 4}]
+  
+
+- id: q16
+  type: explanation
+  question: "Why does Mimi use a split RVQ instead of a single RVQ with 8 levels?"
+  should_refuse: false
+  key_facts: ["distillation of WavLM into the first level conflicts with audio quality", "semantic info goes in a plain VQ, a 7-level RVQ runs in parallel, outputs summed", "better semantic/acoustic trade-off (MUSHRA 57.8 -> 64.0, ABX 6.5% -> 8.1%)"]
+  gold:
+    - {paper: "2410.00037v1", section: "3.3.2 Learning semantic-acoustic tokens with a split RVQ", page: 12}
+    - {paper: "2410.00037v1", section: "5.2 Audio Tokenization (Results)", page: 24}
+  
+
+- id: q17
+  type: explanation
+  question: "How does H-Net's routing module decide where a chunk boundary goes?"
+  should_refuse: false
+  key_facts: ["cosine similarity between projections of adjacent encoder outputs", "p_t = 1/2 (1 - cos sim), boundary if p_t >= 0.5", "low similarity = context shift = boundary"]
+  gold: [{paper: "2507.07955v2", section: "2.2.1 Chunking Layer (Routing Module)", page: 6}]
+  
+
+# ---------- Cross-paper ----------
+- id: q18
+  type: cross_paper
+  question: "Where does each of the three papers put normalization layers, and of what kind?"
+  should_refuse: false
+  key_facts: ["Transformer: post-norm, LayerNorm(x + Sublayer(x))", "Helium/Moshi: RMSNorm at the input of attention and feed-forward blocks (pre-norm)", "H-Net: RMSNorm at the end of each network component"]
+  gold:
+    - {paper: "1706.03762v7", section: "3.1 Encoder and Decoder Stacks", page: 3}
+    - {paper: "2410.00037v1", section: "3.2.1 Architecture", page: 7}
+    - {paper: "2507.07955v2", section: "2.3 Norm Balance", page: 8}
+  
+
+- id: q19
+  type: cross_paper
+  question: "Moshi and H-Net both build on the Transformer. Which parts of each system are Transformers, and which are not?"
+  should_refuse: false
+  key_facts: ["Moshi: Helium Temporal Transformer + smaller Depth Transformer (+ Transformers in Mimi's bottleneck); Mimi itself is convolutional", "H-Net: main network uses Transformer layers; encoders/decoders use Mamba-2"]
+  gold:
+    - {paper: "2410.00037v1", section: "3.4.1 RQ-Transformer", page: 13}
+    - {paper: "2507.07955v2", section: "2.1.2 Design Principles", page: 5}
+  
+
+- id: q20
+  type: cross_paper
+  question: "Which of the three papers removes the tokenizer entirely, and do the other two still rely on one?"
+  should_refuse: false
+  key_facts: ["H-Net is tokenizer-free, operates on bytes", "Transformer: BPE ~37K (EN-DE), 32K word-piece (EN-FR)", "Moshi: Helium uses a 32K SentencePiece tokenizer; Mimi tokenizes audio"]
+  gold:
+    - {paper: "2507.07955v2", section: "Abstract", page: 1}
+    - {paper: "1706.03762v7", section: "5.1 Training Data and Batching", page: 7}
+    - {paper: "2410.00037v1", section: "3.2.1 Architecture", page: 7}
+  
+
+# ---------- Terminology traps ----------
+- id: q21
+  type: term_trap
+  question: "What is smoothing used for, and what value is it set to?"
+  should_refuse: false
+  key_facts: ["Transformer: label smoothing, epsilon_ls = 0.1, hurts perplexity but improves BLEU", "H-Net: smoothing module = EMA over chunks to make boundaries differentiable, no single value", "a good answer separates the two meanings or asks which paper"]
+  gold:
+    - {paper: "1706.03762v7", section: "5.4 Regularization", page: 8}
+    - {paper: "2507.07955v2", section: "2.2.2 Dechunking (Smoothing Module)", page: 7}
+  note: "Same word, unrelated mechanisms in two papers"
+  
+
+- id: q22
+  type: term_trap
+  question: "How does the model decide where to split its input into chunks?"
+  should_refuse: false
+  key_facts: ["H-Net: learned, content-dependent boundaries via the routing module", "Moshi: fixed 80 ms frames at 12.5 Hz, no learned segmentation", "Transformer: fixed BPE/word-piece tokens"]
+  gold:
+    - {paper: "2507.07955v2", section: "2.2.1 Chunking Layer", page: 6}
+    - {paper: "2410.00037v1", section: "3.3.1 Architecture (Causality and streaming)", page: 10}
+  note: "'Chunk' dominates the H-Net paper, so a naive retriever never looks at Moshi"
+  
+
+# ---------- Must refuse ----------
+- id: q23
+  type: unanswerable
+  question: "What BLEU score does the Transformer achieve on English-to-Japanese translation?"
+  should_refuse: true
+  key_facts: ["only English-German and English-French are evaluated"]
+  gold: []
+  
+
+- id: q24
+  type: unanswerable
+  question: "How does a 3-stage H-Net compare with the 2-stage model?"
+  should_refuse: true
+  key_facts: ["the authors did not attempt a 3-stage H-Net (section 4); a good answer says so and gives no numbers"]
+  gold: []
+  note: "Supporting citation for the refusal: 2507.07955v2, 4 Discussion (Deeper Hierarchies), page 22"
+  
+
+- id: q25
+  type: unanswerable
+  question: "What word error rate does Moshi's streaming ASR reach on French speech?"
+  should_refuse: true
+  key_facts: ["only English LibriSpeech test-clean is reported (5.7% WER)"]
+  gold: []
+  note: "Near-miss: the retriever finds the ASR WER passage, tempting a wrong answer"
+  
+
+- id: q26
+  type: unanswerable
+  question: "What does SoundStorm do, according to these papers?"
+  should_refuse: true
+  key_facts: ["SoundStorm appears only as a cited title in Moshi's references; the papers never describe it"]
+  gold: []
+  note: "References trap (pitfall 1): the keyword exists only in the bibliography"
+  

@@ -43,9 +43,9 @@
      b) The open decisions I must make, each with 2–3 options and a one-line trade-off. Do not choose for me.
   ```
 - What Claude did: Pointed out that the previous prompt contained only item 1 (no WORKLOG template, no hard rules), so items 2 and 3 could not be done "exactly as written" without inventing text. Did not create WORKLOG.md or CLAUDE.md; asked for the missing content. Proposed a more accurate "What was wrong" wording for Step 1. Delivered 4a (full checklist of hard requirements) and 4b (26 open decisions with options and trade-offs, no recommendations) in the reply. Ended with item status: 2 not done, 3 not done, 4a done, 4b done.
-- What I checked and how:
+- What I checked and how: I re-read the message I had actually sent and confirmed Claude was right: it ended after item 1. I compared Claude's 4a checklist with the brief, page by page. It included the two extra headings after heading 5, the Vaani section, "How I worked with the assistant", all four tables with their columns, the minimum rows of Table 2a, the results.csv columns, and the formatting rules (milliseconds, one decimal, "not measured").
 - What was wrong / what I caught: My follow-up wrongly assumed the assistant had skipped items 2–4; they were never in the prompt it received because my paste was truncated.
-- Decision I made (and if I overruled Claude, why):
+- Decision I made (and if I overruled Claude, why): Accepted Claude's more accurate wording for the Step 1 "What was wrong" field instead of my own, because mine blamed the assistant for something that was my mistake. Also noted as good behaviour: it refused to invent rules "exactly as I wrote them" when it had never seen them. Re-sent the full content as one complete block (Step 1c).
 
 ## 2026-11-12 – Step 1c – Missing content: WORKLOG, CLAUDE.md, checklists
 - Prompt (verbatim):
@@ -77,9 +77,9 @@
   3. Save your 4a checklist and 4b decision list from your last reply into docs/brief_checklist.md and docs/open_decisions.md, word for word.
   ```
 - What Claude did: Created docs/WORKLOG.md with entries for Steps 1, 1b and 1c using the template; created CLAUDE.md with the eight rules exactly as given; saved the 4a checklist to docs/brief_checklist.md and the 4b decision list to docs/open_decisions.md, word for word from the previous reply.
-- What I checked and how:
-- What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- What I checked and how: Opened CLAUDE.md and compared it with my eight rules. Read the Step 1 entry in WORKLOG.md and confirmed my prompt was copied verbatim. Read the Step 1b "What was wrong" text Claude wrote for me (it had no text from me for that field) and kept it because it is accurate.
+- What was wrong / what I caught: My own rule was wrong: I wrote "I am on Windows (PowerShell)" but my terminal is cmd. I found out in Step 3 when `Copy-Item` failed in cmd. Corrected in CLAUDE.md in Step 3b.
+- Decision I made (and if I overruled Claude, why): Keep the brief checklist and the 26 open decisions as files in docs/, so every later decision can be traced back to its number in open_decisions.md.
 
 ## 2026-11-12 – Step 2 – Decisions, papers, extraction, Groq docs, calibration plan
 - Prompt (verbatim):
@@ -118,9 +118,9 @@
     - which plan the rate-limit table belongs to
     - whether limits are per model or shared across models
     - that the llama models are now listed as enterprise-only
-- What I checked and how:
-- What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- What I checked and how: I opened data/papers/MANIFEST.md and checked that the three files are 1706.03762v7, 2410.00037v1 and 2507.07955v2. I read the 10 extraction problems and recognised three of them as material for the "naive retriever" section (references labelled as Conclusion, flattened superscripts such as 10^20 → 1020, repeated section names). I noted that Claude read Groq's docs through a summarising fetch tool and that the page does not say which plan the table belongs to, so every limit had to be verified by real calls, not trusted. I have a free Groq account, so the "Free Plan" values are the ones that apply to me.
+- What was wrong / what I caught: The calibration plan used about 25% of the documented daily tokens (~49K of 200K) while staying under 10% of requests. Tokens, not requests, are my scarce resource (about 35 full answers per model per day at 200K tokens), so the plan was optimising the wrong limit.
+- Decision I made (and if I overruled Claude, why): Accepted file names with the version (<id>vN.jsonl) instead of my <id>.jsonl, so the version travels with the data. Rejected the 25%-token plan: merged the latency baseline and the TTFT measurement into one set of streamed requests, kept reasoning_effort low by default, and decided to calibrate both gpt-oss-120b and gpt-oss-20b, because if limits are per model, two models double the daily budget. Final model choice left open until I have quality measurements.
 
 ## 2026-11-12 – Step 3 – Calibration script (dry run only)
 - Prompt (verbatim):
@@ -169,9 +169,9 @@
     - prompt caching may confound the a-vs-c comparison
     - tiny max_out with reasoning may yield no visible token
   - Item 3 not started (it waits for the real run).
-- What I checked and how:
-- What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- What I checked and how: Read the dry-run table and saw the upper bound (41,149) was over my 35K cap. Checked the b3 argument myself: after b2 recovers, 120b is no longer limited, so a 200 from 20b would prove nothing. Claude was right. Created .env myself in cmd (`copy .env.example .env`, then `notepad .env`), checked with `dir /a` that it is .env and not .env.txt, and with `git status` that it is not tracked. Created a dedicated key for this project in the Groq console instead of reusing my other project's key, since limits are per organisation anyway and a separate key can be revoked after submission.
+- What was wrong / what I caught: My own b3 design was wrong (sending to 20b after recovery cannot distinguish per-model from shared limits); Claude Code caught it, and I accepted the correction. My 4 s spacing for part a would have hit the 8K tokens-per-minute limit in the middle of the baseline; also caught by Claude Code. And my CLAUDE.md said PowerShell: `Copy-Item` failed because I use cmd.
+- Decision I made (and if I overruled Claude, why): Decided in Step 3b (see there).
 
 ## 2026-11-12 – Step 3b – Calibration decisions, cmd, cache markers
 - Prompt (verbatim):
@@ -205,9 +205,9 @@
   - A first patch attempt failed on an assertion and changed nothing; redone with direct edits.
   - Reran the dry run: 77 requests max, upper bound 42,662 tokens. That is 662 over the new 42K cap, because the markers and 128-token outputs add tokens. Reported, not changed.
   - Recorded the decisions in DECISIONS.md. Did not run `--go`.
-- What I checked and how:
-- What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- What I checked and how: Read the new dry run: 77 requests (under 110) but 42,662 tokens, over the 42K cap. Re-ran the dry run myself in cmd after raising the cap and checked it printed "Caps: 110 requests, 43000 tokens" and "WITHIN the caps". Then ran `--go` myself (not Claude): 62 requests sent, 36,397 tokens used, completed without a hard stop. Saved the console output next to the raw file.
+- What was wrong / what I caught: The random markers and the larger 128-token allowance pushed the upper bound 662 tokens over my 42K cap. Claude reported it rather than silently going over.
+- Decision I made (and if I overruled Claude, why): Raised the cap to 43K rather than cutting part c, because the cap is checked before each request and the run would have dropped part-c requests, and part c has only 4 (losing one would cost a quarter of the reasoning-effort comparison). The markers go at the START of every prompt, because prompt caching works on the beginning of the prompt. I ran the real calls myself so the measurements are mine.
 
 ## 2026-11-12 – Step 3c – Calibration summary and hypotheses
 - Prompt (verbatim):
@@ -250,6 +250,86 @@
     - The local clock is 2.2–3.2 s ahead of Groq's Date header.
     - 20 of the 59 200s produced no visible token because max_out 16 went entirely to reasoning.
     - The RPM refill behaviour fits neither a 60 s sliding window nor a continuous bucket.
-- What I checked and how:
-- What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- What I checked and how: Before reading Claude's summary, I read the console output myself: 30 successes in b1 then a 429 on cal-051; rem_req was 962 both before and after the 429 (so a rejected request does not use daily budget); 20b answered 200 with its own counter (989) while 120b was blocked; in b4, 3 of 5 ~2K-token requests passed. Then I recomputed one claim by hand on a real record: on the 429 (cal-051), x-ratelimit-remaining-requests = 962, so 1000 − 962 = 38 used, and 38 × 86.4 s = 3,283.2 s = 54 min 43.2 s, which matches the header x-ratelimit-reset-requests: 54m43.2s exactly. This confirms the daily limit refills at 1 request per 86.4 s (1000 per day). I renamed the console file to remove the double extension (contents unchanged). : I took screenshots of the Groq console Usage page (Cost/Activity) into docs/evidence/.
+- What was wrong / what I caught: My hypothesis (f) said the daily counter "refills gradually"; the data showed it refills only in whole 86.4 s periods between requests, so under continuous load it never refills. My plan also gave tiny requests a 16-token output budget, which reasoning used up entirely: 20 of 59 successful requests produced no visible text.
+- Decision I made (and if I overruled Claude, why): Treat "the daily quota never refills under continuous load" as a hypothesis until tested, because it rests on one run. Design around reserved tokens (prompt + max output), not used tokens, since Groq charges the full output allowance up front against the per-minute limit: every pipeline step gets a tight max_tokens, and reasoning_effort stays low. Test whether fast retries prevent recovery (Step 3d) before using it in the Retries section.
+
+## 2026-11-12 – Step 3d – Retry experiment (dry run), redaction script, Table 1 draft
+- Prompt (verbatim):
+
+  ```text
+  Step 3d. Numbered items.
+
+  1. Write scripts/retry_experiment.py (same recording format, append-only, dry run unless --go) to test your hypothesis that the per-minute request limit only refills during gaps of at least 2 s. On openai/gpt-oss-120b, tiny requests (≤16 output tokens, reasoning_effort low, unique marker at the start):
+     a) Burst until the first 429. Then AGGRESSIVE retry: one request every 1.0 s for 20 s. Record whether any 200 comes back and when.
+     b) 60 s cooldown. Burst again until the first 429. Then POLITE retry: wait exactly retry-after (plus 0–300 ms random jitter) before each retry. Record time from the 429 to the first 200.
+     Caps: 100 requests and 12K tokens in total (counted the same way Groq charges: prompt + max output). Show me the dry run and wait for my OK. Predict, before running, what each phase should show if your hypothesis is right and if it is wrong.
+
+  2. Write scripts/make_submission_copy.py: copies results/raw/*.jsonl into results/submission/ with the organization ID replaced by "org_REDACTED", and writes results/submission/REDACTION.md listing exactly what was replaced and in which records. Never modify results/raw/. Don't run it yet.
+
+  3. Draft docs/table1_draft.md: Table 1 from the brief (Limit | Value you found | How you found it | Confidence), filled only from the calibration evidence, citing record ids. Write "not measured" where we didn't measure (e.g. tokens per day, requests in flight at once). Add a short "Notes" list: the up-front reservation of max output tokens, retry-after rounding up, the 86.4 s daily refill rule, per-model limits, and the 2.2–3.2 s clock skew.
+
+  4. Add to docs/DECISIONS.md: "Keep raw files untouched; submit a redacted copy produced by make_submission_copy.py. Decided by me, 2026-11-12." Add a Step 3d entry to docs/WORKLOG.md (my prompt verbatim).
+
+  End with the status of items 1–4.
+  ```
+- What Claude did:
+  - Wrote scripts/retry_experiment.py:
+    - Reuses calibrate.py's helpers; records have the same fields plus `t_since_phase_429_end_ms`.
+    - Writes results/raw/retry_<UTC>.jsonl.
+    - Phases: a_burst, a_aggressive (20 × 1 s), 60 s cooldown, b_burst, b_polite (retry-after + 0–300 ms jitter, max 10).
+    - Caps: 100 requests and 12K tokens, counted as prompt + max output for every sent request, 429s included.
+  - Dry run: worst case 100 requests / ~9.5K estimated tokens; expected under H1 83 requests.
+  - Wrote predictions for four hypotheses before running:
+    - H1: whole intervals, every request resets the clock
+    - H2: only accepted requests reset it
+    - H3: continuous bucket
+    - H4: 60 s sliding window
+  - Wrote scripts/make_submission_copy.py: regex `org_…` → `org_REDACTED`. It checks that each raw file's SHA-256 is unchanged and that no ID remains in the copy, and writes REDACTION.md with file / line / record / JSON path. Only compiled, not run. A grep found one distinct org ID, 3 occurrences, all in the calibration file.
+  - Drafted docs/table1_draft.md from calibration records only, with the notes requested. Tokens per day and requests in flight are marked "not measured"; the maximum overlap seen was 5.
+  - Added the redaction decision to DECISIONS.md.
+- What I checked and how: Before running, I checked that Claude Code wrote its predictions for H1–H4 BEFORE the run, so the result could not be fitted afterwards. I checked the dry run stayed under my caps (100 requests, 12K tokens) and waited more than 60 s after the last 120b call before running `--go` myself. After the run, I read the console output myself and noticed the aggressive retries succeeded every 3rd attempt: not never (H1) and not every 2nd (H2's prediction).
+- What was wrong / what I caught: Nothing wrong in this step's code. The surprise was in the result: none of the four written predictions matched the aggressive phase exactly, which led to Step 3e.
+- Decision I made (and if I overruled Claude, why): Run the experiment on 120b only, with tiny requests, to keep the cost low (8,784 tokens charged). Keep raw files untouched and submit a redacted copy (org ID) produced by a script, so reviewers can see exactly what was changed and why.
+
+## 2026-11-12 – Step 3e – Retry experiment analysis
+- Prompt (verbatim):
+
+  ```text
+  Step 3e. The retry experiment ran: results/raw/retry_20261112T145223Z.jsonl. Numbered items:
+
+  1. Write scripts/summarize_retry.py and run it. Using the exact start times in the raw file (not the printed t+ values), for every aggressive-phase request compute the gap since the last ACCEPTED request and since the last request of any kind. Print a table with id, both gaps, status.
+
+  2. Test my reading: "a request passes only if at least 2.0 s have passed since the last accepted request; rejected requests do not reset the clock." Say confirmed / rejected, with the smallest gap that passed and the largest gap that failed. Compare with your 4 written predictions (H1-H4): which held, and why H2's 'every 2nd retry' became every 3rd.
+
+  3. Compute throughput: successes per second in the aggressive phase vs the best possible with polite 2.0 s spacing, and the share of wasted requests. This is my "retrying made things worse" case.
+
+  4. Check the daily refill rule: your model predicts rem_req = 977 on rty-001 (954 at end of calibration, about 35 min idle). It shows 976. Recompute from exact timestamps across both raw files and explain the difference, or say the rule needs correcting.
+
+  5. Update docs/table1_draft.md: the "Time until it recovers" row for requests per minute, with this evidence. Add to docs/DECISIONS.md: "Retry policy: wait at least retry-after measured from the last accepted request; jitter only added on top, never subtracted. Decided by me from retry_20261112T145223Z, 2026-11-12."
+
+  6. Add a Step 3e entry to docs/WORKLOG.md (my prompt verbatim).
+
+  End with the status of items 1-6.
+  ```
+- What Claude did:
+  - Wrote scripts/summarize_retry.py. It reads the retry file plus the calibration file and computes every gap from recorded start times.
+  - Raw: 83 requests (a_burst 30 + 1 × 429, a_aggressive 7/20, b_burst 30 + 1 × 429, b_polite 1/1), 8,784 tokens charged.
+  - Your reading: confirmed. Smallest passing gap 2.009 s (rty-044), largest failing 1.996 s (rty-035), no exceptions. All 7 passes came ~1.0 s after a rejected request.
+  - Predictions: H2 held. H1 rejected (7 passes, not 0). H3 rejected (bursts stopped at 30 twice). H4 rejected (passes during aggressive; polite passed at 2.247 s).
+  - Why every 3rd retry instead of every 2nd: the 2nd retry after a success landed at 1.990–1.996 s (scheduler timing), just under 2.0 s, in 5 of 6 cases.
+  - Throughput: 7 accepted in 19.997 s = 0.350/s; 65.0% wasted. A client spacing 2.0 s from the 429 end gets 9 in the same window (10 if timed from the last accepted request).
+  - Daily rule: the user's 977 came from "about 35 min". The exact gap cal-062 → rty-001 is 2,021.1 s = 33.69 min = 23.39 periods, giving 954 + 23 − 1 = 976 = observed. The rule matches 114/116 accepted 120b records across both files; the 2 misses are the concurrent b4 swap.
+  - Updated table1_draft.md: RPM recovery row, confidence, and notes. Added the retry-policy decision to DECISIONS.md.
+- What I checked and how: From the console output I computed by hand the gap between each aggressive retry and the last accepted request, and saw that every rejection was at 1.995–1.996 s and every success at ≥ 2.0 s. I formulated the rule ("2.0 s since the last accepted request; rejections don't reset the clock") myself and asked Claude Code to test it from exact timestamps: confirmed, smallest gap that passed 2.009 s (rty-044), largest that failed 1.996 s (rty-035).
+- What was wrong / what I caught: My planning assistant (Claude in claude.ai) estimated the idle gap as "about 35 minutes" and predicted rem_req = 977 on rty-001, against 976 observed. Claude Code recomputed from exact timestamps: 2,021.1 s = 23.39 periods of 86.4 s, so 954 + 23 − 1 = 976. The rule was right; the rounding was wrong. Lesson: check predictions against exact timestamps, never rounded times.
+- Decision I made (and if I overruled Claude, why): Retry policy: wait at least retry-after measured from the last accepted request, jitter only added on top. Evidence: retrying every 1 s got 7 of 20 through (65.0% wasted, 0.35/s) vs 9–10 with 2 s spacing; a 5 ms shortfall (1.995 s instead of 2.0 s) turned a retry into a rejection. Open issues noted for later: with several requests in flight, "last accepted" is known late (0.2–0.8 s after sending), and token-limit 429s behave differently (steady refill, retry-after rounded up from 90 ms to 1 s).
+- Note: I renamed results/raw/calibration_20261112T141038Z_console.txt.txt to remove a double extension added by Notepad. Contents unchanged.
+
+## 2026-11-12 – Step Q – Evaluation questions
+- Prompt (verbatim): Not a Claude Code step. Drafted with Claude (claude.ai) from the three PDFs I uploaded; draft kept in eval/questions_draft.yaml.
+- What I did: Verified every question in the PDFs and set verified: true on each. Final set in eval/questions.yaml.  kept 26 of 26.
+- What I checked and how: For each question, Ctrl+F in the PDF on a key fact (e.g. "4000", "0.03", "65%") and checked the page number printed at the bottom of the page. For the 4 refusal questions, searched each PDF for the key terms ("Japanese", "3-stage", "French", "SoundStorm") to confirm the papers do not answer them.
+- What I found: While drafting, Claude (claude.ai) noticed that two papers contradict themselves. I verified both in the PDFs: Attention gives EN-FR BLEU as 41.8 (abstract, Table 2) but 41.0 (section 6.1, page 8); Dynamic Chunking gives DNA data efficiency as "nearly 4×" (abstract) but 3.6× (pages 4 and 17). Kept as q13/q14: a naive retriever cites whichever chunk it finds first, with full confidence, which gives a fourth failure mode for the naive-retriever section.
+- What was wrong / what I caught: Nothing wrong found during verification: all 26 answers and page numbers matched the PDFs.
+- Decision I made (and if I overruled Claude, why): Kept all 26 drafted questions unchanged, because every one verified and the set already covers the failure types I want to measure (single facts, exponents in tables, explanations, cross-paper, terminology traps, refusals including a references trap). The question set is assistant-drafted; my contribution here is verification.

@@ -33,6 +33,12 @@ Files named <id>vN.jsonl, so the version travels with the data. Decided by me, 2
 - A unique random marker at the start of every prompt in every part, so no request hits the prompt cache. Decided by me, 2026-11-12.
 - Part a small requests: max output raised from 64 to 128 tokens. Decided by me, 2026-11-12.
 
+### Retry policy
+Retry policy: wait at least retry-after measured from the last accepted request; jitter only added on top, never subtracted. Decided by me from retry_20261112T145223Z, 2026-11-12.
+
+### Raw results and submission
+Keep raw files untouched; submit a redacted copy produced by make_submission_copy.py. Decided by me, 2026-11-12.
+
 ### Environment
 My terminal is cmd (Command Prompt), not PowerShell. Decided by me, 2026-11-12.
 
