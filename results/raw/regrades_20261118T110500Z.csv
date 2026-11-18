@@ -1,0 +1,5 @@
+request_id,previous_grade,answer_grade,grade_from,reason
+eval-large-20261118T091718Z-q05,correct,wrong,second grader,"key fact '160 ms theoretical, 200 ms in practice': answer gives only 160 ms; the rubric string checked 160ms only (blind second grader caught it)"
+eval-medium-20261118T092253Z-q05,correct,wrong,second grader,"key fact '160 ms theoretical, 200 ms in practice': answer gives only 160 ms; the rubric string checked 160ms only (blind second grader caught it)"
+eval-medium-20261117T102821Z-q05,correct,wrong,consistency,"same rule as the day-2 q05 regrade: answer gives only the 160 ms theoretical latency, not the 200 ms in practice"
+eval-small-20261117T103158Z-q05,correct,wrong,consistency,"same rule as the day-2 q05 regrade: answer gives only the 160 ms theoretical latency, not the 200 ms in practice"

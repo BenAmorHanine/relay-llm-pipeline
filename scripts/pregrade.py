@@ -103,7 +103,8 @@ def main() -> int:
     out = grades_path(run_csv)
     if out.exists() and not args.force:
         raise SystemExit(f"{out.relative_to(ROOT)} exists (it may hold your final grades); use --force to overwrite")
-    qs = {q["id"]: q for q in yaml.safe_load((ROOT / "eval" / "questions.yaml").read_text(encoding="utf-8"))}
+    qs = {q["id"]: q for f in ("questions.yaml", "heldout.yaml") if (ROOT / "eval" / f).exists()
+          for q in yaml.safe_load((ROOT / "eval" / f).read_text(encoding="utf-8"))}
     traces: dict[str, dict] = {}
     for line in traces_for(run_csv).read_text(encoding="utf-8").splitlines():
         rec = json.loads(line)

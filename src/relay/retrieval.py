@@ -142,6 +142,37 @@ class PerPaperQuota:
         return [replace(h, rank=i + 1) for i, h in enumerate(chosen + extras)]
 
 
+class PaperCover:
+    """Global top-k, plus the best chunk of each paper missing from it, but only when the question calls for it:
+    it asks about all the papers (`ask_all`), names one of that paper's own terms (`named[paper]`), or that
+    paper's best chunk scores at least `ratio` x the top score (the same word matters in two papers, e.g. a term
+    trap). Extras are appended after the top-k, never replace it, so single-paper questions keep their passages.
+    Unlike PerPaperQuota it adds context only where a second paper is plausible (5 of 26 eval questions at medium)."""
+
+    def __init__(self, retriever: Retriever, k: int, papers: Sequence[str], named: dict[str, re.Pattern],
+                 ask_all: re.Pattern, ratio: float = 0.7, pool: int = 200):
+        self.retriever, self.k, self.papers = retriever, k, list(papers)
+        self.named, self.ask_all, self.ratio, self.pool = named, ask_all, ratio, pool
+        self.name = f"{retriever.name}+cover{ratio}"
+
+    def search(self, query: str, k: int | None = None) -> list[Hit]:
+        ranked = self.retriever.search(query, self.pool)
+        chosen = ranked[: (k or self.k)]
+        if not chosen:
+            return []
+        have = {h.chunk.paper_id for h in chosen}
+        want_all = bool(self.ask_all.search(query))
+        extras = []
+        for p in self.papers:
+            if p in have:
+                continue
+            best = next((h for h in ranked if h.chunk.paper_id == p), None)
+            if best is not None and (want_all or (p in self.named and self.named[p].search(query))
+                                     or best.score >= self.ratio * chosen[0].score):
+                extras.append(best)
+        return [replace(h, rank=i + 1) for i, h in enumerate(chosen + extras)]
+
+
 class RetrievalPipeline:
     """fetch_k candidates from the retriever, optional re-rank, keep final_k."""
 

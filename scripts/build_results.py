@@ -59,6 +59,19 @@ def build(raw_dir: Path, out: Path) -> tuple[int, int]:
                 if rid not in seen:
                     problems.append(f"{gf.name}:{i}: request_id {rid} is in no run file")
                 grade_of[rid] = (g["answer_grade"], gf.name)
+    # regrades: results/raw/regrades_<UTC>.csv (request_id, previous_grade, answer_grade, grade_from, reason), applied
+    # in file order after the grades files; append-only corrections with an audit trail. Each line must name the
+    # grade it replaces, so a regrade can never silently apply to the wrong grade.
+    for rf in sorted(Path(raw_dir).glob("regrades_*.csv")):
+        with rf.open(encoding="utf-8", newline="") as fh:
+            for i, g in enumerate(csv.DictReader(fh), 2):
+                rid = g["request_id"]
+                cur = grade_of.get(rid, ("", ""))[0]
+                if cur != g["previous_grade"]:
+                    problems.append(f"{rf.name}:{i}: {rid} is graded {cur!r}, regrade says previous {g['previous_grade']!r}")
+                if g["answer_grade"] not in GRADES - {""}:
+                    problems.append(f"{rf.name}:{i}: grade {g['answer_grade']!r}")
+                grade_of[rid] = (g["answer_grade"], rf.name)
     for row in rows:
         if row["request_id"] in grade_of:
             g = grade_of[row["request_id"]][0]

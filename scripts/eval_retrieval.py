@@ -18,6 +18,7 @@ Metrics per (setting, question):
 Retrieval variants:
     plain              global top-k
     quota_q1/quota_q2  global top-k, plus the top-q chunks of each paper, duplicates removed
+    cover              global top-k, plus the best chunk of a missing paper the question calls for (the pipeline's retrieval)
 
 Writes one JSON line per (variant, question) to a new results/raw/retrieval_eval_<UTC>.jsonl.
 The functions here are also imported by scripts/bench_embeddings.py.
@@ -38,7 +39,8 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from relay.chunking import ALL_KINDS, DEFAULT_KINDS, ChunkConfig, build_chunks, load_blocks  # noqa: E402
-from relay.retrieval import BM25Retriever, Hit, PerPaperQuota, RetrievalPipeline  # noqa: E402
+from relay.retrieval import BM25Retriever, Hit, PaperCover, PerPaperQuota, RetrievalPipeline  # noqa: E402
+from relay.pipeline import ASKS_ALL_PAPERS, PAPER_TERMS  # noqa: E402
 from relay.textnorm import match_norm  # noqa: E402,F401  (shared with the pipeline's check)
 
 PAPERS = ["1706.03762v7", "2410.00037v1", "2507.07955v2"]
@@ -65,7 +67,7 @@ FACTS: dict[str, list[tuple[str, str] | None]] = {
     "q02": [(A, "P100"), (A, "12 hours"), (A, "3.5 days")],
     "q03": [(A, "4000"), (A, "10^-9"), (A, "inverse square root")],
     "q04": [(M, "12.5Hz"), (M, "2048"), (M, "1.1kbps")],
-    "q05": [(M, "160ms"), (M, "delay of 1")],
+    "q05": [(M, "200ms"), (M, "delay of 1")],   # was "160ms" until 2026-11-18: missed answers without the 200 ms in practice
     "q06": [(M, "65%"), (M, "EPAD")],
     "q07": [(H, "0.03"), (H, "compression ratio")],
     "q08": [(H, "4.5-5 bytes"), (H, "6.0 bytes per chunk")],
@@ -83,6 +85,18 @@ FACTS: dict[str, list[tuple[str, str] | None]] = {
     "q20": [(H, "tokenizer-free"), (A, "byte-pair"), (M, "SentencePiece")],
     "q21": [(A, "ls = 0.1"), (H, "smoothing module"), None],
     "q22": [(H, "routing module"), (M, "80ms"), (A, "byte-pair")],
+    # held-out questions (eval/heldout.yaml): used by pregrade.py only, never by the retrieval tuning above
+    "q27": [(M, "7B"), (M, "2.1T tokens")],
+    "q28": [(M, "7 million hours"), None],
+    "q29": [(A, "0.6"), (A, "21"), None],
+    "q30": [(A, "91.3"), (A, "92.7")],
+    "q31": [(M, "1024"), (M, "16"), (M, "6")],
+    "q32": [(H, "66.3")],
+    "q33": [(A, "nearly identical"), (A, "extrapolate")],
+    "q34": [(H, "fine-grained inputs"), (H, "uncompressed sequences"), (H, "inductive bias")],
+    "q35": [(A, "512"), (M, "4096")],
+    "q36": [(A, "25000"), (M, "4.2M"), (H, "256")],
+    "q37": [(A, "P_drop = 0.1"), (M, "quantizer dropout"), None],
 }
 
 
@@ -160,7 +174,8 @@ def print_summary(summary: list[dict]) -> None:
 def check_facts_table() -> int:
     """Print the essential-facts table and verify each string exists in the clean text of its paper."""
     qs = {q["id"]: q for q in load_questions()}
-    clean = {p: [json.loads(l) for l in (ROOT / "data" / "papers" / "clean" / f"{p}.jsonl").open(encoding="utf-8")]
+    qs.update({q["id"]: q for q in yaml.safe_load((ROOT / "eval" / "heldout.yaml").read_text(encoding="utf-8"))})
+    clean ={p: [json.loads(l) for l in (ROOT / "data" / "papers" / "clean" / f"{p}.jsonl").open(encoding="utf-8")]
              for p in PAPERS}
     naive = {p: [json.loads(l) for l in (ROOT / "data" / "papers" / "extracted" / f"{p}.jsonl").open(encoding="utf-8")]
              for p in PAPERS}
@@ -206,7 +221,7 @@ def main() -> int:
 
     write({"type": "run_start", "time": datetime.now(timezone.utc).isoformat(), "script": "scripts/eval_retrieval.py",
            "table_context": not args.no_table_context, "questions_sha256": sha(qpath), "corpora": {k: [v[0], v[1], sorted(v[2])] for k, v in CORPORA.items()},
-           "settings": SETTINGS, "variants": ["plain", "quota_q1", "quota_q2"],
+           "settings": SETTINGS, "variants": ["plain", "quota_q1", "quota_q2", "cover"],
            "retriever": "BM25 k1=1.5 b=0.75 (src/relay/retrieval.py)", "facts": FACTS,
            "inputs_sha256": {f"{d}/{p}.jsonl": sha(ROOT / "data" / "papers" / d / f"{p}.jsonl")
                              for d in ("extracted", "clean") for p in PAPERS}})
@@ -218,7 +233,8 @@ def main() -> int:
             bm25 = BM25Retriever(chunks)
             variants = {"plain": RetrievalPipeline(bm25, final_k=k),
                         "quota_q1": PerPaperQuota(bm25, k=k, q=1, papers=PAPERS),
-                        "quota_q2": PerPaperQuota(bm25, k=k, q=2, papers=PAPERS)}
+                        "quota_q2": PerPaperQuota(bm25, k=k, q=2, papers=PAPERS),
+                        "cover": PaperCover(bm25, k=k, papers=PAPERS, named=PAPER_TERMS, ask_all=ASKS_ALL_PAPERS, ratio=0.7)}
             for vname, pipe in variants.items():
                 label = f"{corpus}/{setting}/{vname}"
                 rows = []

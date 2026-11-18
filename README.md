@@ -18,7 +18,7 @@ stand-in model service calibrated from those measurements, under five load shape
 | `eval/`         | Evaluation questions and grading                           |
 | `data/papers/`  | The three arXiv papers at the pinned versions              |
 | `results/raw/`  | Raw measurements, written by code only, never hand-edited  |
-| `docs/`         | Brief, write-up, worklog, exported assistant conversations |
+| `docs/`         | Brief, report, tables, decisions, stand-in notes, development log |
 
 ## Setup (Windows cmd, Python 3.11+)
 
@@ -56,7 +56,12 @@ Real evaluation on Groq (dry run by default; `--go` makes real calls and spends 
 rem review eval\grades_run_eval_medium_<UTC>.csv, fill final_grade where you disagree, then:
 .venv\Scripts\python.exe scripts\apply_grades.py eval\grades_run_eval_medium_<UTC>.csv
 rem repeat for --setting small and --setting large
+rem held-out questions q27-q39 (eval\heldout.yaml, frozen; never used for tuning):
+.venv\Scripts\python.exe scripts\run_eval.py --setting medium --heldout
+.venv\Scripts\python.exe scripts\run_eval.py --setting medium --heldout --go
 ```
+
+Grade corrections never edit a grades file: they go in an append-only `results\raw\regrades_<UTC>.csv` (request_id, previous_grade, answer_grade, grade_from, reason), which `build_results.py` applies after the original grades. A blind second grader's grades (`results\raw\second_grades_<UTC>.csv`) are compared with the first grades in `docs\tables.md`.
 
 Stand-in validation (the same questions against the stand-in, then compared with the real runs):
 

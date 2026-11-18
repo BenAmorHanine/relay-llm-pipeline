@@ -1,0 +1,142 @@
+# Held-out questions, written on 2026-11-18 AFTER the paper-cover and multi-paper draft-rule changes, and frozen
+# before any run on them (sha256 recorded in docs/DECISIONS.md). They are never used to tune the pipeline: their
+# only job is to check that gains measured on q01-q26 are not an artefact of tuning on those questions.
+# Same schema as eval/questions.yaml (eval/SCHEMA.md). Same mix of kinds, including the failure kinds the
+# changes target: differing values, cross-paper, term traps.
+# Drafted from the clean extraction (data/papers/clean). verified: true = every key fact and gold page re-checked
+# against the rendered PDF pages on 2026-11-18 (not by an outside reviewer).
+
+- id: q27
+  type: single_fact
+  question: How large is the Helium language model, and how much data was it pretrained on?
+  should_refuse: false
+  key_facts: ['7B parameters', '2.1T tokens of public English data']
+  gold:
+  - {paper: 2410.00037v1, section: 1 Introduction, page: 3}
+  verified: true
+
+- id: q28
+  type: single_fact
+  question: How much audio is in the dataset used to pretrain Moshi on audio?
+  should_refuse: false
+  key_facts: ['7 million hours (the unsupervised audio dataset)', 'mostly English speech']
+  gold:
+  - {paper: 2410.00037v1, section: 4.2 Audio data, page: 17}
+  verified: true
+
+- id: q29
+  type: single_fact
+  question: What beam size and length penalty does the Transformer use when decoding?
+  should_refuse: false
+  key_facts: ['translation: beam size 4, length penalty alpha = 0.6', 'constituency parsing: beam size 21, alpha = 0.3',
+              'a good answer gives both settings']
+  gold:
+  - {paper: 1706.03762v7, section: 6.1 Machine Translation, page: 8}
+  - {paper: 1706.03762v7, section: 6.3 English Constituency Parsing, page: 10}
+  note: Two values for the same setting in two tasks of one paper; reporting only one is incomplete
+  verified: true
+
+- id: q30
+  type: table_number
+  question: What F1 score did the Transformer reach on WSJ English constituency parsing?
+  should_refuse: false
+  key_facts: ['91.3 trained on WSJ only (4 layers)', '92.7 semi-supervised']
+  gold:
+  - {paper: 1706.03762v7, section: '6.3 English Constituency Parsing, Table 4', page: 10}
+  note: Two rows of one table; the semi-supervised number alone is incomplete
+  verified: true
+
+- id: q31
+  type: table_number
+  question: What are the model dimension, number of heads and number of layers of Moshi's Depth Transformer?
+  should_refuse: false
+  key_facts: ['model dimension 1024', '16 heads', '6 layers']
+  gold:
+  - {paper: 2410.00037v1, section: '3.4.1 RQ-Transformer, Table 1', page: 8}
+  note: Table 1 lists the Temporal Transformer (4096, 32, 32) right above; mixing the two rows is wrong. MLP dimension 4096 is not asked.
+  verified: true
+
+- id: q32
+  type: table_number
+  question: How much does H-Net improve on XWinograd-zh compared with the tokenized Transformer?
+  should_refuse: false
+  key_facts: ['59.9 -> 66.3']
+  gold:
+  - {paper: 2507.07955v2, section: 1 Introduction, page: 4}
+  verified: true
+
+- id: q33
+  type: explanation
+  question: Why did the Transformer authors choose sinusoidal positional encodings rather than learned ones?
+  should_refuse: false
+  key_facts: ['learned positional embeddings gave nearly identical results (Table 3 row E)',
+              'sinusoidal may let the model extrapolate to sequence lengths longer than those seen in training']
+  gold:
+  - {paper: 1706.03762v7, section: 3.5 Positional Encoding, page: 6}
+  verified: true
+
+- id: q34
+  type: explanation
+  question: Why are H-Net's encoder and decoder built mainly from Mamba-2 layers?
+  should_refuse: false
+  key_facts: ['effective handling of fine-grained inputs', 'efficiency on long, uncompressed sequences',
+              'ablations: SSM encoders/decoders outperform Transformer layers (inductive bias for compression)']
+  gold:
+  - {paper: 2507.07955v2, section: 2.1.2 Design Principles, page: 5}
+  verified: true
+
+- id: q35
+  type: cross_paper
+  question: How does the base Transformer compare in size with Moshi's Temporal Transformer (model dimension, layers, heads)?
+  should_refuse: false
+  key_facts: ['base Transformer: d_model 512, N = 6 layers, h = 8 heads',
+              'Moshi Temporal Transformer: model dimension 4096, 32 layers, 32 heads']
+  gold:
+  - {paper: 1706.03762v7, section: '6.2 Model Variations, Table 3', page: 9}
+  - {paper: 2410.00037v1, section: '3.4.1 RQ-Transformer, Table 1', page: 8}
+  verified: true
+
+- id: q36
+  type: cross_paper
+  question: How large are the training batches in each of the three papers?
+  should_refuse: false
+  key_facts: ['Transformer: about 25000 source and 25000 target tokens per batch',
+              'Moshi: Helium 4.2M tokens per batch; Moshi pre-training 16h of audio (and 1.2M text tokens) per batch; Mimi 128 windows of 12 s (p.11) is also correct',
+              'H-Net: batch size 256 sequences of 8192 bytes (just under 0.5M tokens for the BPE baseline)']
+  gold:
+  - {paper: 1706.03762v7, section: 5.1 Training Data and Batching, page: 7}
+  - {paper: 2410.00037v1, section: '3.4.1 RQ-Transformer, Table 1', page: 8}
+  - {paper: 2507.07955v2, section: 3 Experiments, page: 11}
+  note: Three different units (tokens, hours of audio, sequences of bytes)
+  verified: true
+
+- id: q37
+  type: term_trap
+  question: What is dropout used for, and at what rate?
+  should_refuse: false
+  key_facts: ['Transformer: dropout on sub-layer outputs and embedding sums, P_drop = 0.1 for the base model; big EN-FR used 0.1 instead of 0.3',
+              "Moshi: quantizer dropout in Mimi, for bitrate scalability (no rate given)",
+              'a good answer separates the two meanings']
+  gold:
+  - {paper: 1706.03762v7, section: 5.4 Regularization, page: 8}
+  - {paper: 2410.00037v1, section: 3.3.1 Architecture, page: 11}
+  note: Same word, regularisation in one paper and a codec training trick in another
+  verified: true
+
+- id: q38
+  type: unanswerable
+  question: What BLEU score does the Transformer achieve on WMT 2014 German-to-English?
+  should_refuse: true
+  key_facts: ['the paper reports English-to-German and English-to-French, not German-to-English']
+  gold: []
+  note: Near miss on a reported benchmark (direction reversed)
+  verified: true
+
+- id: q39
+  type: unanswerable
+  question: What dropout rate does H-Net use?
+  should_refuse: true
+  key_facts: ['the H-Net paper does not mention dropout']
+  gold: []
+  note: Absent from H-Net; the Transformer's 0.1 is a tempting wrong answer
+  verified: true

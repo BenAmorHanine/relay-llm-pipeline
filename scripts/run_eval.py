@@ -39,8 +39,8 @@ FEEDBACK_TOKENS = 120       # check errors in a redraft message (estimate)
 STOP_AFTER_BAD = 3
 
 
-def load_questions(selected: str | None) -> list[dict]:
-    qs = yaml.safe_load((ROOT / "eval" / "questions.yaml").read_text(encoding="utf-8"))
+def load_questions(selected: str | None, heldout: bool = False) -> list[dict]:
+    qs = yaml.safe_load((ROOT / "eval" / ("heldout.yaml" if heldout else "questions.yaml")).read_text(encoding="utf-8"))
     if selected:
         want = [x.strip() for x in selected.split(",") if x.strip()]
         unknown = sorted(set(want) - {q["id"] for q in qs})
@@ -83,10 +83,10 @@ def dry_run(questions: list[dict], tool: BM25Tool, cfg: PipelineConfig) -> None:
 
 
 async def go(questions: list[dict], tool: BM25Tool, cfg: PipelineConfig, standin: bool = False,
-             pace: bool = True) -> int:
+             pace: bool = True, heldout: bool = False) -> int:
     from relay.model_client import GroqClient
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    scenario = "eval_standin" if standin else "eval"
+    scenario = ("eval_heldout" if heldout else "eval") + ("_standin" if standin else "")
     run_csv = RAW / f"run_{scenario}_{tool.setting}_{stamp}.csv"
     traces = RAW / f"traces_{scenario}_{tool.setting}_{stamp}.jsonl"
     server = None
@@ -133,19 +133,21 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--setting", choices=list(RETRIEVAL_SETTINGS), default="medium")
     ap.add_argument("--questions", help="comma-separated ids, e.g. q01,q02 (default: all)")
+    ap.add_argument("--heldout", action="store_true",
+                    help="use eval/heldout.yaml (q27-q38, written after the 2026-11-18 changes; scenario eval_heldout)")
     ap.add_argument("--go", action="store_true", help="make real Groq calls (default: dry run)")
     ap.add_argument("--standin", action="store_true", help="run against the stand-in instead (no Groq calls)")
     ap.add_argument("--no-pace", action="store_true",
                     help="run questions back to back (default: wait for the 120b token bucket to refill between "
                          "questions, so latency is measured on an unloaded service)")
     args = ap.parse_args()
-    questions = load_questions(args.questions)
+    questions = load_questions(args.questions, args.heldout)
     tool = BM25Tool(args.setting)
     cfg = PipelineConfig()
     if not args.go and not args.standin:
         dry_run(questions, tool, cfg)
         return 0
-    return asyncio.run(go(questions, tool, cfg, standin=args.standin, pace=not args.no_pace))
+    return asyncio.run(go(questions, tool, cfg, standin=args.standin, pace=not args.no_pace, heldout=args.heldout))
 
 
 if __name__ == "__main__":

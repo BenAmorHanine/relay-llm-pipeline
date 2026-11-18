@@ -12,14 +12,14 @@ Same questions and retrieval setting, sequential, real Groq vs stand-in. Generat
 | draft work | 23 / 26 | 630 | 591 | 0.94 | 908 | 957 | 0.21 |
 | end-to-end first token | 26 / 26 | 9,988 | 11,561 | 1.16 | 20,083 | 12,731 | 0.58 |
 
-## medium: run_eval_medium_20261117T102821Z.csv vs run_eval_standin_medium_20261117T104108Z.csv
+- medium: not measured (real run: run_eval_medium_20261118T092253Z.csv, stand-in run: none)
+## large: run_eval_large_20261118T091718Z.csv vs run_eval_standin_large_20261118T092938Z.csv
 
 | Measure | n real / stand-in | median real | median stand-in | ratio | p90 real | p90 stand-in | D |
 |---|---|---|---|---|---|---|---|
-| route model first token | 26 / 26 | 421 | 778 | 1.85 | 698 | 2,200 | 0.85 |
-| route work | 26 / 26 | 467 | 782 | 1.67 | 737 | 2,202 | 0.81 |
-| draft model first token | 23 / 26 | 591 | 929 | 1.57 | 807 | 1,767 | 0.79 |
-| draft work | 23 / 26 | 750 | 948 | 1.26 | 1,012 | 1,770 | 0.56 |
-| end-to-end first token | 26 / 26 | 9,640 | 12,087 | 1.25 | 12,948 | 13,081 | 0.54 |
+| route model first token | 26 / 26 | 677 | 478 | 0.71 | 1,220 | 721 | 0.46 |
+| route work | 26 / 26 | 711 | 485 | 0.68 | 1,230 | 727 | 0.58 |
+| draft model first token | 25 / 26 | 811 | 652 | 0.80 | 1,325 | 879 | 0.38 |
+| draft work | 25 / 26 | 983 | 672 | 0.68 | 1,450 | 897 | 0.56 |
+| end-to-end first token | 26 / 26 | 1,815 | 1,196 | 0.66 | 2,689 | 1,644 | 0.62 |
 
-- large: not measured (real run: none, stand-in run: none)

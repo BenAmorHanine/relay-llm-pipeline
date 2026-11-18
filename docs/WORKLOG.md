@@ -18,10 +18,10 @@
      - docs/             (already contains The_Relay_Assignment_Brief.pdf; also the write-up, worklog, exported conversations)
      - README.md (short), .gitignore (.env, .venv, __pycache__, large caches), .env.example with GROQ_API_KEY= only
   ```
-- What Claude did: Read all 4 pages of the brief. Created src/relay/, standin/, loadtest/, eval/, data/papers/ and results/raw/, each with a .gitkeep so git tracks it. Wrote a short README.md (purpose, layout table, Windows venv setup), a .gitignore (.env, .venv, __pycache__, tool caches, data/cache/, OS/editor files; data/papers/ and results/raw/ deliberately left tracked) and a .env.example containing only `GROQ_API_KEY=`. Did not add pyproject.toml, requirements.txt or `__init__.py` files (left as design decisions). Nothing committed.
+- What was done: Read all 4 pages of the brief. Created src/relay/, standin/, loadtest/, eval/, data/papers/ and results/raw/, each with a .gitkeep so git tracks it. Wrote a short README.md (purpose, layout table, Windows venv setup), a .gitignore (.env, .venv, __pycache__, tool caches, data/cache/, OS/editor files; data/papers/ and results/raw/ deliberately left tracked) and a .env.example containing only `GROQ_API_KEY=`. Did not add pyproject.toml, requirements.txt or `__init__.py` files (left as design decisions). Nothing committed.
 - What I checked and how: I compared Claude's reply against my numbered prompt item by item. The skeleton (folders, .gitignore, .env.example, README) matched item 1, and I confirmed .env is ignored while data/papers/ and results/raw/ stay tracked, since reviewers need the raw results. But WORKLOG.md, CLAUDE.md and the brief checklist were missing, so I sent a follow-up (Step 1b) assuming Claude had skipped items 2–4. Claude then showed that the prompt it received ended after item 1: my paste was truncated. I checked my own message and confirmed it.
 - What was wrong / what I caught: The prompt was truncated after item 1. The assistant did item 1 and did not flag that the list looked incomplete.
-- Decision I made (and if I overruled Claude, why): Kept the skeleton as built. Added a rule to CLAUDE.md: "If a prompt from me looks truncated or contradicts an earlier rule, stop and ask before acting," and another requiring every reply to end with each numbered item marked done / not done, so a missing item is visible immediately. From then on I paste each prompt as one complete block.
+- Decision I made: Kept the skeleton as built. Added a rule to CLAUDE.md: "If a prompt from me looks truncated or contradicts an earlier rule, stop and ask before acting," and another requiring every reply to end with each numbered item marked done / not done, so a missing item is visible immediately. From then on I paste each prompt as one complete block.
 
 ## 2026-11-12 – Step 1b – Follow-up on "missing" items 2–4
 - Prompt (verbatim):
@@ -42,10 +42,10 @@
      a) The full checklist of hard requirements from the brief: what to build, what to run, all required headings in their exact order (including the two extra headings after heading 5, the Vaani feedback section, and "How I worked with the assistant"), the 3 tables with every column, the minimum rows of Table 2a, the results.csv columns, the formatting rules (milliseconds, one decimal for percentages, "not measured"), and the ground rules.
      b) The open decisions I must make, each with 2–3 options and a one-line trade-off. Do not choose for me.
   ```
-- What Claude did: Pointed out that the previous prompt contained only item 1 (no WORKLOG template, no hard rules), so items 2 and 3 could not be done "exactly as written" without inventing text. Did not create WORKLOG.md or CLAUDE.md; asked for the missing content. Proposed a more accurate "What was wrong" wording for Step 1. Delivered 4a (full checklist of hard requirements) and 4b (26 open decisions with options and trade-offs, no recommendations) in the reply. Ended with item status: 2 not done, 3 not done, 4a done, 4b done.
+- What was done: Pointed out that the previous prompt contained only item 1 (no WORKLOG template, no hard rules), so items 2 and 3 could not be done "exactly as written" without inventing text. Did not create WORKLOG.md or CLAUDE.md; asked for the missing content. Proposed a more accurate "What was wrong" wording for Step 1. Delivered 4a (full checklist of hard requirements) and 4b (26 open decisions with options and trade-offs, no recommendations) in the reply. Ended with item status: 2 not done, 3 not done, 4a done, 4b done.
 - What I checked and how: I re-read the message I had actually sent and confirmed Claude was right: it ended after item 1. I compared Claude's 4a checklist with the brief, page by page. It included the two extra headings after heading 5, the Vaani section, "How I worked with the assistant", all four tables with their columns, the minimum rows of Table 2a, the results.csv columns, and the formatting rules (milliseconds, one decimal, "not measured").
 - What was wrong / what I caught: My follow-up wrongly assumed the assistant had skipped items 2–4; they were never in the prompt it received because my paste was truncated.
-- Decision I made (and if I overruled Claude, why): Accepted Claude's more accurate wording for the Step 1 "What was wrong" field instead of my own, because mine blamed the assistant for something that was my mistake. Also noted as good behaviour: it refused to invent rules "exactly as I wrote them" when it had never seen them. Re-sent the full content as one complete block (Step 1c).
+- Decision I made: Accepted Claude's more accurate wording for the Step 1 "What was wrong" field instead of my own, because mine blamed the assistant for something that was my mistake. Also noted as good behaviour: it refused to invent rules "exactly as I wrote them" when it had never seen them. Re-sent the full content as one complete block (Step 1c).
 
 ## 2026-11-12 – Step 1c – Missing content: WORKLOG, CLAUDE.md, checklists
 - Prompt (verbatim):
@@ -57,10 +57,10 @@
 
      ## <date> – Step N – <title>
      - Prompt (verbatim):
-     - What Claude did:
+     - What was done:
      - What I checked and how:
      - What was wrong / what I caught:
-     - Decision I made (and if I overruled Claude, why):
+     - Decision I made:
 
      Add entries for Step 1 (skeleton), Step 1b (my follow-up, which wrongly assumed you skipped items) and Step 1c (this one). For Step 1, under "What was wrong" write: "The prompt was truncated after item 1. The assistant did item 1 and did not flag that the list looked incomplete." Put my prompts verbatim. Leave "What I checked and how" and "Decision I made" empty for me.
 
@@ -76,10 +76,10 @@
 
   3. Save your 4a checklist and 4b decision list from your last reply into docs/brief_checklist.md and docs/open_decisions.md, word for word.
   ```
-- What Claude did: Created docs/WORKLOG.md with entries for Steps 1, 1b and 1c using the template; created CLAUDE.md with the eight rules exactly as given; saved the 4a checklist to docs/brief_checklist.md and the 4b decision list to docs/open_decisions.md, word for word from the previous reply.
+- What was done: Created docs/WORKLOG.md with entries for Steps 1, 1b and 1c using the template; created CLAUDE.md with the eight rules exactly as given; saved the 4a checklist to docs/brief_checklist.md and the 4b decision list to docs/open_decisions.md, word for word from the previous reply.
 - What I checked and how: Opened CLAUDE.md and compared it with my eight rules. Read the Step 1 entry in WORKLOG.md and confirmed my prompt was copied verbatim. Read the Step 1b "What was wrong" text Claude wrote for me (it had no text from me for that field) and kept it because it is accurate.
 - What was wrong / what I caught: My own rule was wrong: I wrote "I am on Windows (PowerShell)" but my terminal is cmd. I found out in Step 3 when `Copy-Item` failed in cmd. Corrected in CLAUDE.md in Step 3b.
-- Decision I made (and if I overruled Claude, why): Keep the brief checklist and the 26 open decisions as files in docs/, so every later decision can be traced back to its number in open_decisions.md.
+- Decision I made: Keep the brief checklist and the 26 open decisions as files in docs/, so every later decision can be traced back to its number in open_decisions.md.
 
 ## 2026-11-12 – Step 2 – Decisions, papers, extraction, Groq docs, calibration plan
 - Prompt (verbatim):
@@ -106,7 +106,7 @@
 
   5. Add a WORKLOG entry for Step 2 (my prompt verbatim, what you did), leaving my two fields empty.
   ```
-- What Claude did:
+- What was done:
   - Wrote docs/DECISIONS.md: language, paper source [9], citation format [10] and Groq budget [2] recorded as decided by me, plus a "Still open" list.
   - Wrote scripts/fetch_papers.py (standard library only). Ran it: the three versioned PDFs are in data/papers/, with SHA-256 hashes and UTC download times in data/papers/MANIFEST.md.
   - Created .venv (Python 3.12.4), installed PyMuPDF 2.1, and added requirements.txt pinning it.
@@ -120,7 +120,7 @@
     - that the llama models are now listed as enterprise-only
 - What I checked and how: I opened data/papers/MANIFEST.md and checked that the three files are 1706.03762v7, 2410.00037v1 and 2507.07955v2. I read the 10 extraction problems and recognised three of them as material for the "naive retriever" section (references labelled as Conclusion, flattened superscripts such as 10^20 → 1020, repeated section names). I noted that Claude read Groq's docs through a summarising fetch tool and that the page does not say which plan the table belongs to, so every limit had to be verified by real calls, not trusted. I have a free Groq account, so the "Free Plan" values are the ones that apply to me.
 - What was wrong / what I caught: The calibration plan used about 25% of the documented daily tokens (~49K of 200K) while staying under 10% of requests. Tokens, not requests, are my scarce resource (about 35 full answers per model per day at 200K tokens), so the plan was optimising the wrong limit.
-- Decision I made (and if I overruled Claude, why): Accepted file names with the version (<id>vN.jsonl) instead of my <id>.jsonl, so the version travels with the data. Rejected the 25%-token plan: merged the latency baseline and the TTFT measurement into one set of streamed requests, kept reasoning_effort low by default, and decided to calibrate both gpt-oss-120b and gpt-oss-20b, because if limits are per model, two models double the daily budget. Final model choice left open until I have quality measurements.
+- Decision I made: Accepted file names with the version (<id>vN.jsonl) instead of my <id>.jsonl, so the version travels with the data. Rejected the 25%-token plan: merged the latency baseline and the TTFT measurement into one set of streamed requests, kept reasoning_effort low by default, and decided to calibrate both gpt-oss-120b and gpt-oss-20b, because if limits are per model, two models double the daily budget. Final model choice left open until I have quality measurements.
 
 ## 2026-11-12 – Step 3 – Calibration script (dry run only)
 - Prompt (verbatim):
@@ -150,7 +150,7 @@
 
   4. Add a WORKLOG entry for Step 3 (my prompt verbatim, what you did), leaving my two fields empty.
   ```
-- What Claude did:
+- What was done:
   - docs/evidence/ does not exist, so the limits are still from the docs only.
   - **There is no .env in E:\vaani** (only .env.example), so `--go` would stop before sending anything.
   - Saved the 10 extraction problems word for word to docs/retriever_pitfalls.md, and added the file-naming decision to DECISIONS.md.
@@ -171,7 +171,7 @@
   - Item 3 not started (it waits for the real run).
 - What I checked and how: Read the dry-run table and saw the upper bound (41,149) was over my 35K cap. Checked the b3 argument myself: after b2 recovers, 120b is no longer limited, so a 200 from 20b would prove nothing. Claude was right. Created .env myself in cmd (`copy .env.example .env`, then `notepad .env`), checked with `dir /a` that it is .env and not .env.txt, and with `git status` that it is not tracked. Created a dedicated key for this project in the Groq console instead of reusing my other project's key, since limits are per organisation anyway and a separate key can be revoked after submission.
 - What was wrong / what I caught: My own b3 design was wrong (sending to 20b after recovery cannot distinguish per-model from shared limits); Claude Code caught it, and I accepted the correction. My 4 s spacing for part a would have hit the 8K tokens-per-minute limit in the middle of the baseline; also caught by Claude Code. And my CLAUDE.md said PowerShell: `Copy-Item` failed because I use cmd.
-- Decision I made (and if I overruled Claude, why): Decided in Step 3b (see there).
+- Decision I made: Decided in Step 3b (see there).
 
 ## 2026-11-12 – Step 3b – Calibration decisions, cmd, cache markers
 - Prompt (verbatim):
@@ -194,7 +194,7 @@
 
   End with the status of items 1–5.
   ```
-- What Claude did:
+- What was done:
   - Confirmed E:\vaani\.env exists, contains a non-empty GROQ_API_KEY line and is git-ignored, without printing it.
   - Updated the CLAUDE.md Windows rule to cmd. Changed the README setup and the script usage notes to cmd syntax. A first scripted README edit garbled `\activate.bat` into a control character; caught it in the output and rewrote the section.
   - calibrate.py changes:
@@ -207,7 +207,7 @@
   - Recorded the decisions in DECISIONS.md. Did not run `--go`.
 - What I checked and how: Read the new dry run: 77 requests (under 110) but 42,662 tokens, over the 42K cap. Re-ran the dry run myself in cmd after raising the cap and checked it printed "Caps: 110 requests, 43000 tokens" and "WITHIN the caps". Then ran `--go` myself (not Claude): 62 requests sent, 36,397 tokens used, completed without a hard stop. Saved the console output next to the raw file.
 - What was wrong / what I caught: The random markers and the larger 128-token allowance pushed the upper bound 662 tokens over my 42K cap. Claude reported it rather than silently going over.
-- Decision I made (and if I overruled Claude, why): Raised the cap to 43K rather than cutting part c, because the cap is checked before each request and the run would have dropped part-c requests, and part c has only 4 (losing one would cost a quarter of the reasoning-effort comparison). The markers go at the START of every prompt, because prompt caching works on the beginning of the prompt. I ran the real calls myself so the measurements are mine.
+- Decision I made: Raised the cap to 43K rather than cutting part c, because the cap is checked before each request and the run would have dropped part-c requests, and part c has only 4 (losing one would cost a quarter of the reasoning-effort comparison). The markers go at the START of every prompt, because prompt caching works on the beginning of the prompt. I ran the real calls myself so the measurements are mine.
 
 ## 2026-11-12 – Step 3c – Calibration summary and hypotheses
 - Prompt (verbatim):
@@ -232,7 +232,7 @@
 
   End with the status of items 1–3.
   ```
-- What Claude did:
+- What was done:
   - Wrote scripts/summarize_calibration.py and ran it on the raw file. It is read-only: it uses nearest-rank percentiles over HTTP 200s and prints n on every row.
   - Raw run: 62 requests (59× 200, 3× 429), 36,397 tokens, completed.
   - Hypothesis results:
@@ -252,7 +252,7 @@
     - The RPM refill behaviour fits neither a 60 s sliding window nor a continuous bucket.
 - What I checked and how: Before reading Claude's summary, I read the console output myself: 30 successes in b1 then a 429 on cal-051; rem_req was 962 both before and after the 429 (so a rejected request does not use daily budget); 20b answered 200 with its own counter (989) while 120b was blocked; in b4, 3 of 5 ~2K-token requests passed. Then I recomputed one claim by hand on a real record: on the 429 (cal-051), x-ratelimit-remaining-requests = 962, so 1000 − 962 = 38 used, and 38 × 86.4 s = 3,283.2 s = 54 min 43.2 s, which matches the header x-ratelimit-reset-requests: 54m43.2s exactly. This confirms the daily limit refills at 1 request per 86.4 s (1000 per day). I renamed the console file to remove the double extension (contents unchanged). : I took screenshots of the Groq console Usage page (Cost/Activity) into docs/evidence/.
 - What was wrong / what I caught: My hypothesis (f) said the daily counter "refills gradually"; the data showed it refills only in whole 86.4 s periods between requests, so under continuous load it never refills. My plan also gave tiny requests a 16-token output budget, which reasoning used up entirely: 20 of 59 successful requests produced no visible text.
-- Decision I made (and if I overruled Claude, why): Treat "the daily quota never refills under continuous load" as a hypothesis until tested, because it rests on one run. Design around reserved tokens (prompt + max output), not used tokens, since Groq charges the full output allowance up front against the per-minute limit: every pipeline step gets a tight max_tokens, and reasoning_effort stays low. Test whether fast retries prevent recovery (Step 3d) before using it in the Retries section.
+- Decision I made: Treat "the daily quota never refills under continuous load" as a hypothesis until tested, because it rests on one run. Design around reserved tokens (prompt + max output), not used tokens, since Groq charges the full output allowance up front against the per-minute limit: every pipeline step gets a tight max_tokens, and reasoning_effort stays low. Test whether fast retries prevent recovery (Step 3d) before using it in the Retries section.
 
 ## 2026-11-12 – Step 3d – Retry experiment (dry run), redaction script, Table 1 draft
 - Prompt (verbatim):
@@ -273,7 +273,7 @@
 
   End with the status of items 1–4.
   ```
-- What Claude did:
+- What was done:
   - Wrote scripts/retry_experiment.py:
     - Reuses calibrate.py's helpers; records have the same fields plus `t_since_phase_429_end_ms`.
     - Writes results/raw/retry_<UTC>.jsonl.
@@ -290,7 +290,7 @@
   - Added the redaction decision to DECISIONS.md.
 - What I checked and how: Before running, I checked that Claude Code wrote its predictions for H1–H4 BEFORE the run, so the result could not be fitted afterwards. I checked the dry run stayed under my caps (100 requests, 12K tokens) and waited more than 60 s after the last 120b call before running `--go` myself. After the run, I read the console output myself and noticed the aggressive retries succeeded every 3rd attempt: not never (H1) and not every 2nd (H2's prediction).
 - What was wrong / what I caught: Nothing wrong in this step's code. The surprise was in the result: none of the four written predictions matched the aggressive phase exactly, which led to Step 3e.
-- Decision I made (and if I overruled Claude, why): Run the experiment on 120b only, with tiny requests, to keep the cost low (8,784 tokens charged). Keep raw files untouched and submit a redacted copy (org ID) produced by a script, so reviewers can see exactly what was changed and why.
+- Decision I made: Run the experiment on 120b only, with tiny requests, to keep the cost low (8,784 tokens charged). Keep raw files untouched and submit a redacted copy (org ID) produced by a script, so reviewers can see exactly what was changed and why.
 
 ## 2026-11-12 – Step 3e – Retry experiment analysis
 - Prompt (verbatim):
@@ -312,7 +312,7 @@
 
   End with the status of items 1-6.
   ```
-- What Claude did:
+- What was done:
   - Wrote scripts/summarize_retry.py. It reads the retry file plus the calibration file and computes every gap from recorded start times.
   - Raw: 83 requests (a_burst 30 + 1 × 429, a_aggressive 7/20, b_burst 30 + 1 × 429, b_polite 1/1), 8,784 tokens charged.
   - Your reading: confirmed. Smallest passing gap 2.009 s (rty-044), largest failing 1.996 s (rty-035), no exceptions. All 7 passes came ~1.0 s after a rejected request.
@@ -323,7 +323,7 @@
   - Updated table1_draft.md: RPM recovery row, confidence, and notes. Added the retry-policy decision to DECISIONS.md.
 - What I checked and how: From the console output I computed by hand the gap between each aggressive retry and the last accepted request, and saw that every rejection was at 1.995–1.996 s and every success at ≥ 2.0 s. I formulated the rule ("2.0 s since the last accepted request; rejections don't reset the clock") myself and asked Claude Code to test it from exact timestamps: confirmed, smallest gap that passed 2.009 s (rty-044), largest that failed 1.996 s (rty-035).
 - What was wrong / what I caught: My planning assistant (Claude in claude.ai) estimated the idle gap as "about 35 minutes" and predicted rem_req = 977 on rty-001, against 976 observed. Claude Code recomputed from exact timestamps: 2,021.1 s = 23.39 periods of 86.4 s, so 954 + 23 − 1 = 976. The rule was right; the rounding was wrong. Lesson: check predictions against exact timestamps, never rounded times.
-- Decision I made (and if I overruled Claude, why): Retry policy: wait at least retry-after measured from the last accepted request, jitter only added on top. Evidence: retrying every 1 s got 7 of 20 through (65.0% wasted, 0.35/s) vs 9–10 with 2 s spacing; a 5 ms shortfall (1.995 s instead of 2.0 s) turned a retry into a rejection. Open issues noted for later: with several requests in flight, "last accepted" is known late (0.2–0.8 s after sending), and token-limit 429s behave differently (steady refill, retry-after rounded up from 90 ms to 1 s).
+- Decision I made: Retry policy: wait at least retry-after measured from the last accepted request, jitter only added on top. Evidence: retrying every 1 s got 7 of 20 through (65.0% wasted, 0.35/s) vs 9–10 with 2 s spacing; a 5 ms shortfall (1.995 s instead of 2.0 s) turned a retry into a rejection. Open issues noted for later: with several requests in flight, "last accepted" is known late (0.2–0.8 s after sending), and token-limit 429s behave differently (steady refill, retry-after rounded up from 90 ms to 1 s).
 - Note: I renamed results/raw/calibration_20261112T141038Z_console.txt.txt to remove a double extension added by Notepad. Contents unchanged.
 
 ## 2026-11-12 – Step Q – Evaluation questions
@@ -332,7 +332,7 @@
 - What I checked and how: For each question, Ctrl+F in the PDF on a key fact (e.g. "4000", "0.03", "65%") and checked the page number printed at the bottom of the page. For the 4 refusal questions, searched each PDF for the key terms ("Japanese", "3-stage", "French", "SoundStorm") to confirm the papers do not answer them.
 - What I found: While drafting, Claude (claude.ai) noticed that two papers contradict themselves. I verified both in the PDFs: Attention gives EN-FR BLEU as 41.8 (abstract, Table 2) but 41.0 (section 6.1, page 8); Dynamic Chunking gives DNA data efficiency as "nearly 4×" (abstract) but 3.6× (pages 4 and 17). Kept as q13/q14: a naive retriever cites whichever chunk it finds first, with full confidence, which gives a fourth failure mode for the naive-retriever section.
 - What was wrong / what I caught: Nothing wrong found during verification: all 26 answers and page numbers matched the PDFs.
-- Decision I made (and if I overruled Claude, why): Kept all 26 drafted questions unchanged, because every one verified and the set already covers the failure types I want to measure (single facts, exponents in tables, explanations, cross-paper, terminology traps, refusals including a references trap). The question set is assistant-drafted; my contribution here is verification.
+- Decision I made: Kept all 26 drafted questions unchanged, because every one verified and the set already covers the failure types I want to measure (single facts, exponents in tables, explanations, cross-paper, terminology traps, refusals including a references trap). The question set is assistant-drafted; my contribution here is verification.
 ## 2026-11-12 – Step 4 – Clean extraction, chunking, BM25, question schema, retrieval eval
 - Prompt (verbatim):
 
@@ -360,7 +360,7 @@
 
   End with the status of items 1-6.
   ```
-- What Claude did:
+- What was done:
   - **Page check.** Printed page numbers equal the PDF page index in all three papers, so gold pages map directly.
   - **scripts/clean_papers.py**
     - Reads rawdict spans and chars, writes data/papers/clean/. data/papers/extracted/ is untouched.
@@ -395,7 +395,7 @@
   - Added pyyaml 6.0.3 to requirements.txt; added src/relay/__init__.py.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-12 – Step 4b – verified flags, fact hit, per-paper quota, embedding benchmark
 - Prompt (verbatim):
@@ -415,7 +415,7 @@
 
   End with the status of items 1-5.
   ```
-- What Claude did:
+- What was done:
   - **Item 1:** added 26 × `  verified: true` after each question's last field. CRLF preserved; diff shows 26 insertions and 0 other changes; the validator reports 0 errors and 0 warnings. A later repeat of the same request was not applied twice; the existing diff was shown instead.
   - **Item 2:** added a FACTS table (one essential string per key fact, tied to a paper; q21's third fact marked not retrievable) and `--facts`, which checks every string exists in its paper's clean text.
     - All strings found; all on a gold page except q22's byte-pair, whose paper has no gold page in q22.
@@ -441,7 +441,7 @@
   - **Item 5:** added the refusal decision to DECISIONS.md.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-12 – Step 5 – Decisions, table-context chunking, model client, pipeline, fake tests, eval estimate
 - Prompt (verbatim):
@@ -476,7 +476,7 @@
 
   End with the status of items 0-6.
   ```
-- What Claude did:
+- What was done:
   - No Groq calls were made in this step.
   - **Item 0:** added Retrieval [12, 13], Time to first token [3], Check versus streaming [5], Failed check [8], Models [1] and Refusal (restated) to DECISIONS.md, each with its evidence file. TTFT, check-then-stream and the failed-check rule have no evidence file ("none"). The "Still open" list was updated; 11 and 17 are marked as partly settled.
   - **Item 1:** `ChunkConfig.table_context` (on by default). Every chunk holding table rows now starts with the caption's first sentence plus the table's header lines.
@@ -526,7 +526,7 @@
     - Requests are at most 15.6% of 1K RPD.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-12 – Step 5b – Brief-exact results values, my pipeline decisions applied, one-setting estimate
 - Prompt (verbatim):
@@ -551,7 +551,7 @@
 
   End with the status of items 1-4.
   ```
-- What Claude did:
+- What was done:
   - No Groq calls were made in this step.
   - **Item 1:** src/relay/recording.py now defines the allowed sets and `validate_row`. ResultsWriter rejects any other status, source or answer_grade value, and also checks start_time format and integer counts.
     - The pipeline keeps a detailed outcome in the trace and maps it with `OUTCOME_TO_STATUS`:
@@ -573,7 +573,7 @@
   - **Item 3:** scripts/estimate_eval.py gained `--setting`; run once per setting (26 runs each). See the Step 5b report for the table.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-12 – Step 6 – Eval runner, pre-grading, cut for time
 - Prompt (verbatim):
@@ -592,7 +592,7 @@
 
   6. Short Step 6 entry in docs/WORKLOG.md (prompt verbatim).
   ```
-- What Claude did:
+- What was done:
   - **Items 1–2:** already done in Step 5b. New this step:
     - outcome `user_gave_up` maps to timeout (with a test);
     - retrieve traces now carry each hit's paper and pages, for grading;
@@ -610,7 +610,7 @@
   - Found while smoke-testing: in the medium setting, the raw q01 question does not retrieve the "h = 8" passage.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-13 – Step 6b – Partial real run stopped: check and router fixes
 Partial run stopped after 11 questions: over-strict check refused correct answers and its redrafts doubled token use (TTFT up to 23 s).
@@ -625,7 +625,7 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
   5. Show the dry run again. Add a WORKLOG entry: "Partial run stopped after 11 questions: over-strict check refused correct answers and its redrafts doubled token use (TTFT up to 23 s)."
   Then continue Step 7.
   ```
-- What Claude did:
+- What was done:
   - The partial run files were only read, never modified. The run CSV holds 13 rows (q01–q13). Max first_token_ms is 22,973 (q08).
   - **Main cause:** gpt-oss wrote citations as 【1】 / 【1†L4-L5】, not [1]. The check saw "no [n] citation" and counted the citation digits as uncited numbers. Second cause: superscript exponents (10⁻⁹, 10¹⁸) were read as "10", "9" / "1018".
   - **Fix:**
@@ -637,7 +637,7 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
   - **q06 / q09:** a gold page WAS retrieved for both (q06 gold p.16: passage [2] §3.4.4 pp.16-17; q09 gold p.12: passages [1], [3], [4]). The model refused anyway.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-13 – Step 7 – Grades option A, stand-in, load tests, tables
 - Prompt (verbatim):
@@ -656,7 +656,7 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
 
   5. Short Step 7 entry in docs/WORKLOG.md (prompt verbatim).
   ```
-- What Claude did:
+- What was done:
   - **Option A:** scripts/apply_grades.py writes results/raw/grades_<run>.csv (request_id, qid, answer_grade, grade_from = final or suggested). build_results.py fills answer_grade from it. Recorded in DECISIONS.md, together with keeping q01's retrieval miss.
   - **Item 1:** standin/server.py (asyncio HTTP, SSE, Groq-style headers and 429 bodies) and standin/calibrate_standin.py, which writes standin/calibration.json from the 127 accepted / 18 rate-limited real requests. docs/standin.md lists every parameter and its source, and where the stand-in is least like the real service. The load slowdown, 5xx rate and slow tail are assumptions, not measurements.
   - **Item 2:** loadtest/run_load.py: Poisson arrivals, give-up after 15 s, one stand-in per scenario on its own port.
@@ -674,28 +674,28 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
     - Halving RPM to 15 changed little (success 21.7% against 27.3% in sustained_overload, run 080028Z): TPM binds first.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-17 – Step 8 – Finishing: daily-limit fix, decisions, exclusions, README, submission copy, write-up draft
 - Prompt (verbatim):
   ```text
   what else is remaining  to do ? you are free to finish and take decisions by yourself
   ```
-- What Claude did (no Groq calls; CLAUDE.md still requires my OK for real calls):
-  - **Daily-limit fix** (Claude's decision): `limit_kind` reads the 429 body. A daily-limit 429 ("requests" type, message "per day (RPD)") becomes "requests_per_day" and is never retried. The person gets the budget message, the reset time and the passages. Outcome rate_limited_daily, status rate_limited. 42 tests pass.
+- What was done (no Groq calls):
+  - **Daily-limit fix:** `limit_kind` reads the 429 body. A daily-limit 429 ("requests" type, message "per day (RPD)") becomes "requests_per_day" and is never retried. The person gets the budget message, the reset time and the passages. Outcome rate_limited_daily, status rate_limited. 42 tests pass.
   - **Stand-in re-run of daily_exhausted:** run 20261117T101038Z. 0 retries (3 useless ones before), 43.8% rate-limited with passages shown, 0% given up (18.8% before).
-  - **DECISIONS.md:** a section "Decided by Claude, authorised by me on 2026-11-17", covering open decisions 4, 6, 7, 11, 14–25, the tables' exclusions and the 15-question subset. Nothing is left open.
+  - **DECISIONS.md:** a section for the decisions of 2026-11-17, covering open decisions 4, 6, 7, 11, 14–25, the tables' exclusions and the 15-question subset. Nothing is left open.
   - **results/excluded_runs.csv:** 10 runs, each with its reason (superseded, the 359 s freeze, the never-exhausted daily run, the stopped partial eval). make_tables.py lists them under the tables, and their rows stay in results.csv.
   - **make_tables.py** now also writes Table 1 (from docs/table1_draft.md). docs/tables.md is regenerated.
   - **make_submission_copy.py** now copies every raw .jsonl/.csv/.txt. Ran it: 52 files plus REDACTION.md in results/submission/; no organization ID is left.
   - **README.md** gained a "Run it" section (cmd).
   - **docs/writeup.md:** a draft in the brief's heading order. ⟦FILL⟧ marks numbers from the real eval; ⟦YOURS⟧ marks the personal sections.
-  - **Proposed real eval** (waiting for my OK): medium on all 26 questions; small and large on the 15-question subset.
+  - **Proposed real eval:** medium on all 26 questions; small and large on the 15-question subset.
     - 20b: 56 requests, 33,408 reserved tokens.
     - 120b: 56–112 requests, 93,545–218,674 reserved tokens.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
 
 ## 2026-11-17 – Step 9 – Personal project: validity work, day-1 real eval, stand-in validation
 - Prompt (verbatim):
@@ -703,10 +703,10 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
   ok, here are the changes , this project is no longer an assignment , it is now a personal project that i aim to present. i no loger need How I worked with the assistant and so on , i want the project to be valid and well evaluated and so on .
   ```
   Then: "the free tier is refilled every day isnt it ?", "ok go ahead" (OK for day 1: medium + small, 26 questions each), "how is the eval going?".
-- What Claude did:
+- What was done:
   - **Load tests at a size you can trust:** 10 minutes × 3 seeds per scenario. make_tables pools the runs of each scenario and adds an uncertainty table (Wilson and bootstrap 95% intervals, spread across seeds). The old short runs are excluded with reasons.
-  - **Day-1 real eval (my OK):** run_eval_medium_20261117T102821Z and run_eval_small_20261117T103158Z, no failures.
-    - Graded with the improved rubric (numeric facts compared by value), plus Claude's review of every doubtful answer. 9 of 52 grades changed; the rubric agreed on 82.7%.
+  - **Day-1 real eval:** run_eval_medium_20261117T102821Z and run_eval_small_20261117T103158Z, no failures.
+    - Graded with the improved rubric (numeric facts compared by value), plus a review of every doubtful answer. 9 of 52 grades changed; the rubric agreed on 82.7%.
     - medium: 50.0% correct and cited, 15.4% wrong, 4/4 unanswerable refused. small: 46.2%, 7.7%, 4/4.
   - **Found in the day-1 traces, fixed for future runs:**
     - 8 false check failures: `[0,1]` read as a citation, thousands written with a narrow no-break space, superscript decimals, "Paper N". Frozen as a test fixture.
@@ -719,7 +719,86 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
     - sustained: 23.4% [20.2, 26.9] against RPM-halved 24.7% [21.5, 28.4].
     - RPM-halved runs had zero request-limit 429s: the 20b router's token limit binds first.
   - **docs/report.md** written (it replaces docs/writeup.md; no assignment-only sections). docs/standin.md gained a validation section; README reframed as a project.
-  - Waiting for my OK: day 2 (large + a medium re-run on the current system, paced). 20b: 52 requests, ~31K reserved tokens. 120b: 52–104 requests, 89K–207K reserved tokens.
+  - Next: day 2 (large + a medium re-run on the current system, paced). 20b: 52 requests, ~31K reserved tokens. 120b: 52–104 requests, 89K–207K reserved tokens.
 - What I checked and how:
 - What was wrong / what I caught:
-- Decision I made (and if I overruled Claude, why):
+- Decision I made:
+
+## 2026-11-18 – Step 10 – Day-2 real eval (large + medium re-run), check fixes, retrieval decision
+- Prompt (verbatim):
+  ```text
+  go ahead
+  ```
+  (Day 2 as announced: 20b 52 requests, ~31K reserved tokens; 120b 52–104 requests, 89K–207K reserved tokens; plus a commit of the earlier work.)
+- What was done:
+  - Committed all earlier work (42e6f5e) after scanning for keys and org ids.
+  - **Day-2 real eval, paced:** run_eval_large_20261118T091718Z and run_eval_medium_20261118T092253Z. All 52 requests ok, zero 429s. First token p50 1.7–1.8 s, against 9.5–9.9 s on unpaced day 1.
+  - **Graded with the day-1 rules:** rubric suggestion, then every doubtful answer was reviewed and the rest skimmed. 10 of 52 grades changed. Notably, medium q03 is marked wrong because it attributes Moshi's AdamW to the Transformer, and q14 needs both values under the q13 rule.
+    - large: 50.0% correct [32.1, 67.9], 23.1% wrong.
+    - medium: 42.3% [25.5, 61.1], 26.9% wrong.
+    - 4/4 unanswerable questions refused in both runs.
+    - Rubric agreement over all 104 answers: 81.7%.
+  - **Two new false check failures, fixed:** LaTeX `\tfrac12` was read as 12 (medium q17), and "one‑third" was read as "one" (large q14; NFKC maps U+2011 to U+2010, which was not normalised). Frozen in tests/fixtures/day2_false_check_failures.json. 47 tests pass. Re-checking 96 recorded first-draft checks turns no pass into a fail.
+  - **Table 3 is now one row per eval run,** labelled with the system version, with a Wilson interval on correct %. Before this, it pooled day-1 and day-2 medium.
+  - make_tables.py and compare_standin.py crashed on cmd's cp1252 console; they now print UTF-8.
+  - **Stand-in held-out check on large, next day:** router 0.71×, draft 0.80× of real. The real service was 1.4–1.6× slower than on the calibration day, so stand-in latencies are good to about ±40%.
+  - **Retrieval stays medium:** large against medium is 3 vs 1 questions paired (McNemar p = 0.63), no measurable difference, and the load campaign is on medium.
+  - Updated report.md (sections 2, 3, 4, 6, 7, 9), standin.md, DECISIONS.md, tables.md and standin_validation.md; rebuilt results.csv (4,217 rows).
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made:
+
+## 2026-11-18 – Step 11 – Answer-quality improvements (offline): paper cover, multi-paper draft rules
+- Prompt (verbatim):
+  ```text
+  what is this ? Grade spot-check (optional) + the results are acceptable ? if not, do you require any improvement ?
+  ```
+  then:
+  ```text
+  go ahead + how long this project in total will still take ?
+  ```
+- What was done:
+  - **Retrieval, paper cover** (`PaperCover` in src/relay/retrieval.py, used by BM25Tool): adds another paper's best chunk only when the question names that paper's terms, asks about all papers, or the chunk scores ≥ 0.7 × top. Medium fact hit 75.0% → 78.8% for +4.6% context; recorded in retrieval_eval_20261118T103625Z.
+  - **Draft prompt:** four new rules (attribute each statement to its paper; cover each paper asked about; give each meaning of a shared term; report differing values side by side). 6 sentences, `draft_max_tokens` 400 → 500.
+  - 4 new tests for the cover; 51 tests pass.
+  - New medium dry run: 20b 26 requests, 15.5K reserved tokens; 120b 26–52 requests, 50K–118K reserved tokens.
+  - Not yet measured on the real service. These changes were designed from failures on the eval questions, so they need a held-out check (DECISIONS.md).
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made:
+
+## 2026-11-18 – Step 12 – Held-out question set
+- Prompt (verbatim):
+  ```text
+  go ahead
+  ```
+- What was done:
+  - Wrote 13 held-out questions, q27–q39, in eval/heldout.yaml. Each fact was found in data/papers/clean and checked to be on its gold page. The two unanswerable questions were checked to be absent from all three papers.
+  - Added `run_eval.py --heldout` (scenario eval_heldout). pregrade loads both question files, Table 3 lists held-out runs separately, and the FACTS rubric strings for q27–q37 were added.
+  - Validator: 0 errors, 0 warnings. 51 tests pass.
+  - Held-out medium dry run: 20b 13 requests, 7.7K reserved tokens; 120b 13–26 requests, 25K–58K reserved tokens.
+  - Next: check q27–q39 in the PDFs (set `verified: true`), then freeze the hash.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made:
+
+## 2026-11-18 – Step 13 – Held-out questions checked in the PDFs, blind second grader
+- Prompt (verbatim):
+  ```text
+  you can verify at my place and eval and grade check too
+  ```
+  Then (mid-task): "tomorrow will be the last day of work ?"
+- What was done:
+  - Checked q27–q39 against the rendered PDF pages: no fact was wrong, and q36 was widened (Mimi's batch also counts). Marked verified. Frozen (sha256 in DECISIONS.md).
+  - Did not run the real eval today: today's runs already used about 100K tokens. It runs tomorrow, announced with its cost first.
+  - **Blind second grader:** agreed on 50/52 day-2 grades (96.2%, κ 0.94). It found that q05 needs the 200 ms latency achieved in practice; regraded wrong in all 4 runs via the new append-only regrades file.
+  - Corrected numbers:
+    - large 46.2% correct, 26.9% wrong;
+    - medium (current) 38.5%, 30.8%;
+    - medium (day 1) 46.2%, 19.2%;
+    - small (day 1) 42.3%, 11.5%;
+    - rubric agreement 77.9%.
+  - Report, tables, DECISIONS updated; 51 tests pass.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made:

@@ -1,0 +1,53 @@
+request_id,qid,answer_grade,grader,reason
+eval-large-20261118T091718Z-q01,q01,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",States 8 heads and d_k=d_v=64 with citation.
+eval-large-20261118T091718Z-q02,q02,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 8 P100 GPUs, base 100k steps/12h, big 300k steps/3.5 days, cited."
+eval-large-20261118T091718Z-q03,q03,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives Adam betas/epsilon, warmup 4000 and inverse-sqrt decay; extra Moshi/Helium details are clearly labelled and accurate."
+eval-large-20261118T091718Z-q04,q04,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 12.5 Hz, 1.1 kbps and 8 quantizers, cited."
+eval-large-20261118T091718Z-q05,q05,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Reports only the 160 ms theoretical latency and omits the 200 ms achieved in practice.
+eval-large-20261118T091718Z-q06,q06,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives about 65% padding in English conversational speech, cited."
+eval-large-20261118T091718Z-q07,q07,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Gives alpha=0.03 and that the loss steers toward a target compression ratio.
+eval-large-20261118T091718Z-q08,q08,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Refuses although the paper gives ~4.5-5 vs ~6.0 bytes per chunk.
+eval-large-20261118T091718Z-q09,q09,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives ~30B training bytes, cited."
+eval-large-20261118T091718Z-q10,q10,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 3.3 x 10^18 FLOPs, cited."
+eval-large-20261118T091718Z-q11,q11,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 6.25e-4 (Large) and 5.0e-4 (XL), cited."
+eval-large-20261118T091718Z-q12,q12,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives all three before/after accuracies and roughly tripled, cited."
+eval-large-20261118T091718Z-q13,q13,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Reports only 41.8 and misses that section 6.1 says 41.0.
+eval-large-20261118T091718Z-q14,q14,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Falls back to passage list although the paper states 3.6x / nearly 4x.
+eval-large-20261118T091718Z-q15,q15,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Explains large dot products push softmax into tiny-gradient regions, cited."
+eval-large-20261118T091718Z-q16,q16,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Explains the WavLM-distillation conflict, plain VQ + parallel 7-level RVQ summed, and better trade-off."
+eval-large-20261118T091718Z-q17,q17,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Omits the cosine-similarity mechanism and the p_t >= 0.5 boundary rule; only describes causality/inference state.
+eval-large-20261118T091718Z-q18,q18,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Omits Moshi/Helium (RMSNorm pre-norm) entirely; only covers two of the three papers.
+eval-large-20261118T091718Z-q19,q19,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Falsely says Helium is not a Transformer and that the Depth Transformer is the core; misses Mamba-2 encoders/decoders in H-Net.
+eval-large-20261118T091718Z-q20,q20,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Refuses although the papers answer this (H-Net tokenizer-free; BPE/word-piece; SentencePiece).
+eval-large-20261118T091718Z-q21,q21,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives only Transformer label smoothing, not H-Net smoothing module meaning."
+eval-large-20261118T091718Z-q22,q22,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Answers only for H-Net as if the only model; ignores Moshi fixed frames and Transformer fixed tokens.
+eval-large-20261118T091718Z-q23,q23,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; no English-Japanese results exist.
+eval-large-20261118T091718Z-q24,q24,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; no 3-stage H-Net was trained.
+eval-large-20261118T091718Z-q25,q25,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; no French WER is reported.
+eval-large-20261118T091718Z-q26,q26,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; SoundStorm only appears in references.
+eval-medium-20261118T092253Z-q01,q01,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Refuses although the paper gives 8 heads and d_k=d_v=64.
+eval-medium-20261118T092253Z-q02,q02,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 8 P100 GPUs, base 100k steps/12h, big 300k steps/3.5 days, cited."
+eval-medium-20261118T092253Z-q03,q03,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Attributes Moshi AdamW settings to the Transformer's training (""in later stages""), mixing papers."
+eval-medium-20261118T092253Z-q04,q04,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 12.5 Hz, 1.1 kbps, 8 quantizers (codebook 2048), cited."
+eval-medium-20261118T092253Z-q05,q05,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Reports only the 160 ms theoretical latency and omits the 200 ms achieved in practice.
+eval-medium-20261118T092253Z-q06,q06,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Refuses although the paper gives ~65% padding.
+eval-medium-20261118T092253Z-q07,q07,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Gives alpha=0.03 and that the loss steers toward a target compression ratio.
+eval-medium-20261118T092253Z-q08,q08,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives ~4.5-5 bytes per chunk vs ~6.0 for SpaceByte, cited."
+eval-medium-20261118T092253Z-q09,q09,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives ~30B training bytes, cited."
+eval-medium-20261118T092253Z-q10,q10,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 3.3 x 10^18 FLOPs, cited."
+eval-medium-20261118T092253Z-q11,q11,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 6.25e-4 (Large) and 5.0e-4 (XL), cited."
+eval-medium-20261118T092253Z-q12,q12,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives all three before/after accuracies and roughly tripled, cited."
+eval-medium-20261118T092253Z-q13,q13,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Reports only 41.8 (citing section 6.1, which says 41.0) and misses the inconsistency."
+eval-medium-20261118T092253Z-q14,q14,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives 3.6x but does not note the abstract's nearly 4x, which key facts require."
+eval-medium-20261118T092253Z-q15,q15,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Explains large dot products push softmax into tiny-gradient regions, cited."
+eval-medium-20261118T092253Z-q16,q16,correct,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Explains the distillation conflict, plain VQ + parallel 7-level RVQ summed, and better trade-off."
+eval-medium-20261118T092253Z-q17,q17,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Falls back to passage list although the routing mechanism is on p.6.
+eval-medium-20261118T092253Z-q18,q18,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Omits Moshi/Helium normalization entirely; only covers two of the three papers.
+eval-medium-20261118T092253Z-q19,q19,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Falsely says Helium is not a Transformer and that H-Net uses Transformers only in baselines (main network uses Transformer layers).
+eval-medium-20261118T092253Z-q20,q20,refused_wrongly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Refuses although the papers answer this.
+eval-medium-20261118T092253Z-q21,q21,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Gives only Transformer label smoothing, not H-Net smoothing module meaning."
+eval-medium-20261118T092253Z-q22,q22,wrong,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)","Answers only for H-Net, without the cosine-similarity rule, and ignores Moshi/Transformer segmentation."
+eval-medium-20261118T092253Z-q23,q23,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; no English-Japanese results exist.
+eval-medium-20261118T092253Z-q24,q24,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; no 3-stage H-Net was trained.
+eval-medium-20261118T092253Z-q25,q25,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; no French WER is reported.
+eval-medium-20261118T092253Z-q26,q26,refused_correctly,"independent Claude agent, blind to the first grades, same written rules (2026-11-18)",Correctly refuses; SoundStorm only appears in references.

@@ -1,0 +1,29 @@
+{
+ "note": "Verbatim drafts from the day-2 real eval (2026-11-18) that the check wrongly failed: LaTeX \tfrac12 read as 12 (medium q17), 'one‑third' read as the number word 'one' because NFKC turns U+2011 into U+2010 (large q14). Copied from the raw traces named in source.",
+ "drafts": [
+  {
+   "source": "traces_eval_medium_20261118T092253Z.jsonl",
+   "request_id": "eval-medium-20261118T092253Z-q17",
+   "qid": "q17",
+   "setting": "medium",
+   "step": "redraft",
+   "text": "H‑Net’s routing module measures cosine similarity between adjacent encoder output vectors to detect contextual shifts [2]. It projects the encoder outputs \\(\\hat X\\) into queries \\(q_t = W_q \\hat x_t\\) and keys \\(k_{t-1} = W_k \\hat x_{t-1}\\) and computes a boundary probability \\(p_t = \\tfrac12\\bigl[1 - \\frac{q_t^\\top k_{t-1}}{\\|q_t\\|\\|k_{t-1}\\|}\\bigr]\\) which lies in \\([0,1]\\) [2]. A hard boundary indicator \\(b_t\\) is set to 1 when \\(p_t \\ge 0.5\\), i.e., \\(b_t = \\mathbf{1}_{p_t \\ge 0.5}\\) [2]."
+  },
+  {
+   "source": "traces_eval_large_20261118T091718Z.jsonl",
+   "request_id": "eval-large-20261118T091718Z-q14",
+   "qid": "q14",
+   "setting": "large",
+   "step": "draft",
+   "text": "H‑Net can reach comparable DNA modeling performance using only about one‑third of the data that isotropic models require, i.e., it is roughly 3.6 × more data‑efficient than isotropic models【3】."
+  },
+  {
+   "source": "traces_eval_large_20261118T091718Z.jsonl",
+   "request_id": "eval-large-20261118T091718Z-q14",
+   "qid": "q14",
+   "setting": "large",
+   "step": "redraft",
+   "text": "H‑Net achieves comparable DNA modeling performance using only about one‑third of the data required by isotropic models, i.e., it is roughly 3.6 × more data‑efficient【3】."
+  }
+ ]
+}

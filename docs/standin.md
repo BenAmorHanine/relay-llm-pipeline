@@ -29,10 +29,12 @@ The same 26 questions and retrieval setting, run against the real service and ag
 | v1 (2026-11-12 data only), medium | yes | 421 / 778 ms (1.85×) | 0.85 | 584 / 949 ms (1.63×, first attempts only) | 0.83 |
 | v1, small | yes | 432 / 785 ms (1.82×) | 0.85 | not measured | — |
 | **v2 (+ real medium eval), small** | **yes (calibrated on medium, tested on small)** | **432 / 512 ms (1.18×)** | **0.42** | **530 / 576 ms (1.09×)** | **0.37** |
+| **v2, large, next day (2026-11-18)** | **yes (other setting, other day)** | **677 / 478 ms (0.71×)** | **0.46** | **811 / 652 ms (0.80×)** | **0.38** |
 
-- Runs: real `run_eval_small_20261117T103158Z` and `run_eval_medium_20261117T102821Z`. Stand-in, v1: `run_eval_standin_medium_20261117T104108Z` and `run_eval_standin_small_20261117T104539Z`. Stand-in, v2: `run_eval_standin_small_20261117T105108Z`.
+- Runs: real `run_eval_small_20261117T103158Z`, `run_eval_medium_20261117T102821Z` and `run_eval_large_20261118T091718Z`. Stand-in, v1: `run_eval_standin_medium_20261117T104108Z` and `run_eval_standin_small_20261117T104539Z`. Stand-in, v2: `run_eval_standin_small_20261117T105108Z` and `run_eval_standin_large_20261118T092938Z`.
+- **The real service drifts as much as the stand-in errs.** On 2026-11-18 the real router and draft medians were 1.4–1.6× slower than on 2026-11-17, the day v2 was calibrated on. So on the same calls v2 is 1.18× too slow on one day and 0.71× too fast on the next. Read stand-in latencies as ±40%.
 - v1 made every load-test latency 1.6–1.9× too pessimistic. The load campaign was re-run on v2; the v1 campaign is listed in `results/excluded_runs.csv`.
-- **Remaining gaps:** the stand-in's p90 is heavier (router 1,425 vs 822 ms). The stand-in never needs a redraft, so its end-to-end p90 is lower than real (12.7 s vs 20.1 s).
+- **Remaining gaps:** on the small run the stand-in's p90 was heavier (router 1,425 vs 822 ms); on the large run, lighter (721 vs 1,220 ms). The stand-in never needs a redraft. The small comparison's end-to-end p90 (12.7 s vs 20.1 s real) mostly reflects the unpaced real run's 429 waits.
 
 ## Where it is least like the real service
 

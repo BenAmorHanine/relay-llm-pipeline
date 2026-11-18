@@ -23,6 +23,11 @@ _SCI_E = re.compile(r"(?<![a-z\d.])(\d+(?:\.\d+)?)e([-+]?\d+)(?![a-z\d])")      
 _POW10 = re.compile(r"(?<![\d.])10\^([-+]?\d+)")                                      # 10^-9
 _PLAIN = re.compile(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?")                   # 100,000  12.5 (also in 12.5hz)
 _WORD = re.compile(r"\b(" + "|".join(_WORDS) + r")\b")
+# LaTeX fractions as drafts write them: \frac{1}{2}, \tfrac12, \dfrac{1}{2} (a digit or a {group} per argument)
+_TEX_FRAC = re.compile(r"\\[dt]?frac\s*(?:\{\s*(\d+)\s*\}|(\d))\s*(?:\{\s*(\d+)\s*\}|(\d))")
+# Fractions in words ("one-third", "two thirds", "one half"): read as number words they would give 1 or 2
+_WORD_FRACTION = re.compile(r"\b(?:" + "|".join(_WORDS) + r")[-\s]+(?:half|halves|thirds?|quarters?|fourths?|fifths?"
+                            r"|sixths?|sevenths?|eighths?|ninths?|tenths?)\b")
 
 
 def match_norm(s: str) -> str:
@@ -64,7 +69,8 @@ def number_values(s: str, with_parts: bool = False) -> set[str]:
     side, so an answer may quote either the whole value or a part of it. Different numbers stay different."""
     t = _SPACE_THOUSANDS.sub("", s)                                        # 100 000 -> 100000
     t = _SUP_RUN.sub(lambda m: "^" + m.group(0).translate(_SUP).replace("·", "."), t)   # 10⁻⁹ -> 10^-9
-    t = unicodedata.normalize("NFKC", t).replace("−", "-").replace("‑", "-").lower()
+    t = unicodedata.normalize("NFKC", t).replace("−", "-").replace("‐", "-").lower()   # NFKC maps U+2011 to U+2010
+    t = _TEX_FRAC.sub(lambda m: f" {m.group(1) or m.group(2)}/{m.group(3) or m.group(4)} ", t)   # \tfrac12 -> 1/2
     vals: set[str] = set()
 
     def blank(m: re.Match) -> str:
@@ -91,6 +97,7 @@ def number_values(s: str, with_parts: bool = False) -> set[str]:
         return blank(m)
 
     t = _PLAIN.sub(plain, t)
+    t = _WORD_FRACTION.sub(blank, t)       # "one-third": a paraphrased ratio, not a quoted number (not checked)
     for w in _WORD.findall(t):
         vals.add(str(_WORDS[w]))
     return vals

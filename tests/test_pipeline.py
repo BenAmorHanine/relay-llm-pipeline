@@ -136,7 +136,7 @@ class TestPipeline(Base):
         # fake tokens = whitespace pieces + reasoning tokens: router 8 + 20, draft 13 + 30
         self.assertEqual(int(row["tokens_out"]), (8 + 20) + (13 + 30))
         self.assertLessEqual(float(row["first_token_ms"]), float(row["total_ms"]))
-        self.assertEqual(self.client.calls[1]["max_tokens"], 400)
+        self.assertEqual(self.client.calls[1]["max_tokens"], 500)
         self.assertEqual(self.client.calls[1]["reasoning_effort"], "low")
 
     async def test_router_max_tokens_200_and_keywords_only_logged(self):
@@ -490,6 +490,25 @@ class TestRealFailures(unittest.TestCase):
                 r = check_answer(d["text"], hits)
                 self.assertTrue(r.ok, r.errors)
 
+    def test_day2_false_failures_now_pass(self):
+        from relay.pipeline import BM25Tool, normalize_citations
+        fx = json.loads((ROOT / "tests" / "fixtures" / "day2_false_check_failures.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(fx["drafts"]), 3)
+        tools = {s: BM25Tool(s) for s in {d["setting"] for d in fx["drafts"]}}
+        for d in fx["drafts"]:
+            with self.subTest(qid=d["qid"], setting=d["setting"], step=d["step"]):
+                hits = tools[d["setting"]].search(self.qs[d["qid"]]["question"])
+                r = check_answer(normalize_citations(d["text"]), hits)   # as the pipeline does
+                self.assertTrue(r.ok, r.errors)
+
+    def test_day2_patterns_still_catch_wrong_numbers(self):
+        from relay.textnorm import number_values
+        self.assertEqual(number_values(r"p = \tfrac12 and \frac{3}{4}"), {"1", "2", "3", "4"})
+        self.assertEqual(number_values("about one‑third of the data, one half, two thirds"), set())
+        self.assertEqual(number_values("eight heads, k_{t‑1}"), {"8", "1"})
+        hits = self.hits("q14")
+        self.assertFalse(check_answer("H‑Net is about 4.6× more data‑efficient [3].", hits).ok)
+
     def test_day1_patterns_still_fail_on_wrong_numbers(self):
         hits = self.hits("q02")
         ok = "The base Transformer models were trained for 100 000 steps, which took about 12 hours [1]."
@@ -558,6 +577,38 @@ class TestCheck(unittest.TestCase):
     def test_settings_match_eval(self):
         import eval_retrieval as ev
         self.assertEqual(RETRIEVAL_SETTINGS, {k: (v[0], v[1], v[2]) for k, v in ev.SETTINGS.items()})
+
+
+class TestPaperCover(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from relay.pipeline import BM25Tool
+        from relay.retrieval import RetrievalPipeline
+        cls.tool = BM25Tool("medium")
+        cls.plain = RetrievalPipeline(cls.tool._pipe.retriever, final_k=cls.tool.k)
+
+    def ids(self, hits):
+        return [h.chunk.chunk_id for h in hits]
+
+    def test_top_k_is_never_replaced(self):
+        for q in ("Where does each of the three papers put normalization layers, and of what kind?",
+                  "What BLEU score did the big Transformer reach on WMT 2014 English-to-French?"):
+            with self.subTest(q=q):
+                self.assertEqual(self.ids(self.tool.search(q))[: self.tool.k], self.ids(self.plain.search(q)))
+
+    def test_single_paper_question_gets_no_extra(self):
+        q = "What is the frame rate and bitrate of the Mimi codec, and how many quantizers does it use?"
+        self.assertEqual(len(self.tool.search(q)), self.tool.k)
+
+    def test_all_papers_question_covers_every_paper(self):
+        hits = self.tool.search("Where does each of the three papers put normalization layers, and of what kind?")
+        self.assertEqual({h.chunk.paper_id for h in hits}, {"1706.03762v7", "2410.00037v1", "2507.07955v2"})
+        self.assertLessEqual(len(hits), self.tool.k + 2)
+
+    def test_named_paper_is_covered(self):
+        hits = self.tool.search("Does Moshi use the label smoothing of the original Transformer?")
+        self.assertIn("2410.00037v1", {h.chunk.paper_id for h in hits})
+        self.assertIn("1706.03762v7", {h.chunk.paper_id for h in hits})
 
 
 if __name__ == "__main__":

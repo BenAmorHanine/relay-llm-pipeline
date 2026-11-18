@@ -40,7 +40,7 @@ from typing import Any, Callable, Protocol, Sequence
 from .chunking import ChunkConfig, build_chunks, load_blocks
 from .model_client import DAILY, M120, M20, CallRecord, ModelClient, utc_iso
 from .recording import ResultsWriter, TraceWriter
-from .retrieval import BM25Retriever, Hit, RetrievalPipeline
+from .retrieval import BM25Retriever, Hit, PaperCover
 from decimal import Decimal
 
 from .textnorm import match_norm, number_values
@@ -93,6 +93,19 @@ def names_paper_topic(question: str) -> bool:
     return bool(_PAPER_TOPIC.search(question))
 
 
+# Terms that belong to ONE paper (not shared words like "Transformer" or "chunk"): naming one asks for that paper.
+PAPER_TERMS = {
+    "1706.03762v7": re.compile(r"attention is all you need|\bbleu\b|\bwmt\b|positional encodings?|"
+                               r"label smoothing|english-(?:german|french)", re.I),
+    "2410.00037v1": re.compile(r"\bmoshi\b|\bmimi\b|\bhelium\b|inner monologue|depth transformer|"
+                               r"rq-transformer", re.I),
+    "2507.07955v2": re.compile(r"\bh-?net\b|dynamic chunking|spacebyte|routing module|ratio loss", re.I),
+}
+# Questions about all the papers at once.
+ASKS_ALL_PAPERS = re.compile(r"\b(?:(?:the|all|each of the) (?:three|3) papers|each (?:of the )?papers?|"
+                             r"the other two|both papers|all three)\b", re.I)
+
+
 ROUTER_SYSTEM = (
     "You route questions for a question-answering system that can only use these three arXiv papers:\n"
     + "\n".join(f"- {k} {title}: {topic}" for k, (title, topic) in PAPER_TOPICS.items()) + "\n"
@@ -111,7 +124,15 @@ DRAFT_SYSTEM = (
     "2. Write numbers exactly as the passage writes them.\n"
     "3. Do not use anything that is not in the passages.\n"
     f"4. If the passages do not answer the question, reply with exactly this sentence and nothing else: {REFUSAL}\n"
-    "5. Be brief: at most 5 sentences."
+    "5. Each passage starts with its paper id. When passages come from more than one paper, say which paper each "
+    "statement is about, and never attach a detail from one paper to another paper's model.\n"
+    "6. If the question asks about several papers, answer for each paper the passages cover, and say which "
+    "paper the passages do not cover.\n"
+    "7. If a term in the question means different things in different papers' passages, give each meaning with "
+    "its paper.\n"
+    "8. If passages give different values for the same thing, report each value with its citation and say "
+    "that they differ.\n"
+    "9. Be brief: at most 6 sentences."
 )
 
 
@@ -125,7 +146,8 @@ class SearchTool(Protocol):
 
 
 class BM25Tool:
-    """BM25 over clean, section-aware chunks with table context (the decided retrieval)."""
+    """BM25 over clean, section-aware chunks with table context, top-k plus the best chunk of any other paper
+    the question calls for (PaperCover; see docs/DECISIONS.md "Paper cover")."""
 
     name = "bm25"
 
@@ -134,7 +156,8 @@ class BM25Tool:
         cfg = ChunkConfig(size, overlap, section_aware=True)
         chunks = [c for p in PAPERS for c in build_chunks(load_blocks(Path(papers_dir) / f"{p}.jsonl"), cfg)]
         self.setting, self.k, self.n_chunks = setting, k, len(chunks)
-        self._pipe = RetrievalPipeline(BM25Retriever(chunks), final_k=k)
+        self._pipe = PaperCover(BM25Retriever(chunks), k=k, papers=PAPERS, named=PAPER_TERMS,
+                                ask_all=ASKS_ALL_PAPERS, ratio=0.7)
 
     def search(self, query: str) -> list[Hit]:
         return self._pipe.search(query)
@@ -327,7 +350,7 @@ class PipelineConfig:
     router_max_tokens: int = 200         # decided: 2/5 small 20b calls hit 128 in calibration
     router_effort: str = "low"
     draft_model: str = M120
-    draft_max_tokens: int = 400          # decided: cal-006..010, 118-300 output tokens, 1/5 hit 300
+    draft_max_tokens: int = 500          # 400 until 2026-11-18 (real drafts max 366/400); +100 for the multi-paper rules 6-8
     draft_effort: str = "low"
     retrieval_timeout_s: float = 2.0
     call_timeout_s: float = 60.0
