@@ -38,10 +38,12 @@ from pathlib import Path
 from typing import Any, Callable, Protocol, Sequence
 
 from .chunking import ChunkConfig, build_chunks, load_blocks
-from .model_client import M120, M20, CallRecord, ModelClient, utc_iso
+from .model_client import DAILY, M120, M20, CallRecord, ModelClient, utc_iso
 from .recording import ResultsWriter, TraceWriter
 from .retrieval import BM25Retriever, Hit, RetrievalPipeline
-from .textnorm import match_norm, numbers
+from decimal import Decimal
+
+from .textnorm import match_norm, number_values
 
 ROOT = Path(__file__).resolve().parents[2]
 CLEAN_DIR = ROOT / "data" / "papers" / "clean"
@@ -59,16 +61,46 @@ OUT_OF_SCOPE = ("That question is outside what I can answer: I only answer from 
                 "(Attention Is All You Need, Moshi, H-Net).")
 NO_VERIFIED_ANSWER = "I could not produce an answer I can verify against the papers. These are the passages I found:"
 SERVICE_PROBLEM = "The model service did not answer ({why}). Please try again later."
+DAILY_BUDGET = ("Today's answer budget is used up, so I can't write and check an answer right now. It frees up "
+                "again in about {reset}. Meanwhile, these are the passages from the papers that best match your "
+                "question (not checked by a model):")
 SEARCH_PROBLEM = "The paper search did not finish in time, so I cannot answer from the papers. Please try again."
+
+PAPER_TOPICS = {
+    "1706.03762v7": ('"Attention Is All You Need"',
+                     "the Transformer: an encoder-decoder built only from attention (scaled dot-product, multi-head), "
+                     "positional encodings, WMT 2014 English-German/French translation, BLEU, training cost, "
+                     "constituency parsing."),
+    "2410.00037v1": ('"Moshi: a speech-text foundation model for real-time dialogue"',
+                     "Moshi, a full-duplex spoken dialogue model: the Helium text language model, the Mimi neural "
+                     "audio codec, the RQ/Depth Transformer, Inner Monologue, multi-stream audio, latency, "
+                     "speech and text benchmarks."),
+    "2507.07955v2": ('"Dynamic Chunking for End-to-End Hierarchical Sequence Modeling"',
+                     "H-Net, a tokenizer-free byte-level model that learns dynamic chunking (routing module, "
+                     "smoothing, ratio loss), compared with BPE Transformers, Mamba-2 and SpaceByte."),
+}
+
+# Names and terms that only make sense for these three papers. If the router says "out of scope" but the
+# question contains one of them, the pipeline keeps it in scope (real failure: q14 "How much more data-efficient
+# is H-Net than isotropic models on DNA?" was routed out of scope on 2026-11-17, in both settings).
+_PAPER_TOPIC = re.compile(
+    r"\b(transformers?|attention|self-attention|multi-head|positional encoding|bleu|wmt|moshi|mimi|helium|"
+    r"inner monologue|depth transformer|rq-transformer|h-?net|dynamic chunking|chunk(?:s|ing)?|spacebyte|"
+    r"mamba-?2?|byte-?level|byte-pair|bpe|tokeni[sz](?:er|ation)s?|tokenizer-free)\b", re.I)
+
+
+def names_paper_topic(question: str) -> bool:
+    return bool(_PAPER_TOPIC.search(question))
+
 
 ROUTER_SYSTEM = (
     "You route questions for a question-answering system that can only use these three arXiv papers:\n"
-    + "\n".join(f"{k}: {v}" for k, v in PAPERS.items()) + "\n"
-    'Reply with JSON only, no other text: {"keywords": [up to 6 search terms for the question, using the '
-    'words the papers would use], "papers": [ids of the papers likely to contain the answer], '
-    '"in_scope": true or false}.\n'
-    "in_scope is false only when the question is clearly unrelated to these papers and their subject "
-    "matter (for example weather, sports or cooking)."
+    + "\n".join(f"- {k} {title}: {topic}" for k, (title, topic) in PAPER_TOPICS.items()) + "\n"
+    'Reply with JSON only, no other text: {"keywords": [up to 6 search terms for the question], '
+    '"papers": [ids of the papers likely to contain the answer], "in_scope": true or false}.\n'
+    "Set in_scope to false ONLY when the question is clearly unrelated to all three papers (for example "
+    "weather, sports, cooking). A question that names a model, component, method, dataset or number from "
+    "any of these papers is in scope, even if it does not name the paper. When unsure, set in_scope to true."
 )
 
 DRAFT_SYSTEM = (
@@ -150,8 +182,26 @@ def redraft_messages(question: str, hits: Sequence[Hit], draft: str, errors: Seq
 
 # ------------------------------------------------------------------ check ---
 
-_CITE = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+# [n] or [n, m]; not maths: a group containing 0 (passages start at 1) or followed by ^ _ { is an interval
+# such as "p ∈ [0,1]^{L_s}" (real draft, q22 day 1), not a citation
+_CITE = re.compile(r"\[(?![^\]]*\b0\b)(\d+(?:\s*,\s*\d+)*)\](?![\^_{])")
+# "Paper 1", "passage 3": labels, not facts from the passages
+_LABEL_NUM = re.compile(r"\b(?:paper|passage)s?\s+\d+\b", re.I)
 _LEADING_CITES = re.compile(r"^((?:\[\d+(?:\s*,\s*\d+)*\]\s*)+)(.*)$", re.S)
+
+
+# gpt-oss often writes citations as 【1】 or 【1†L3】 (its native style) or full-width ［1］: same as [1]
+_ALT_CITE = re.compile(r"[【［]\s*(\d+(?:\s*[,，]\s*\d+)*)[^】］]*[】］]")
+
+
+def normalize_citations(text: str) -> str:
+    """【1】, 【1】【2】, 【1, 2】, ［1］, 【1†L3-L5】 -> [1], [1][2], [1, 2], [1], [1]."""
+    return _ALT_CITE.sub(lambda m: "[" + re.sub(r"\s*[,，]\s*", ", ", m.group(1)) + "]", text)
+
+
+def _show(v: str) -> str:
+    d = Decimal(v)
+    return format(d, "f") if abs(d.adjusted()) <= 6 else str(d)
 
 
 def citations(text: str) -> list[int]:
@@ -183,7 +233,7 @@ class CheckResult:
 
 def check_answer(answer: str, hits: Sequence[Hit], finish_reason: str | None = None) -> CheckResult:
     """Deterministic: no model, same input -> same result."""
-    text = (answer or "").strip()
+    text = normalize_citations(answer or "").strip()
     if not text:
         return CheckResult(False, False, ["the answer is empty"])
     errors: list[str] = []
@@ -200,18 +250,19 @@ def check_answer(answer: str, hits: Sequence[Hit], finish_reason: str | None = N
     for n in sorted(set(cited)):
         if not 1 <= n <= k:
             errors.append(f"[{n}] does not exist: there are only passages [1] to [{k}]")
-    pnums = {i: set(numbers(f"{h.chunk.citation()}\n{h.chunk.text}")) for i, h in enumerate(hits, 1)}
+    pnums = {i: number_values(f"{h.chunk.citation()}\n{h.chunk.text}", with_parts=True)
+             for i, h in enumerate(hits, 1)}
     for si, sent in enumerate(split_sentences(text), 1):
         sc = [n for n in citations(sent) if 1 <= n <= k]
-        body = _CITE.sub(" ", sent)
-        nums = numbers(body)
+        body = _LABEL_NUM.sub(" ", _CITE.sub(" ", sent))
+        nums = sorted(number_values(body))    # values, so equivalent notations compare equal
         if not citations(sent):
             if nums:  # decided in Step 5b: a number without a citation fails the check
-                errors.append(f"sentence {si} has the number(s) {', '.join(dict.fromkeys(nums))} but no "
+                errors.append(f"sentence {si} has the number(s) {', '.join(_show(v) for v in nums)} but no "
                               f"citation: \"{sent[:100]}\"")
             continue
         pool = set().union(*(pnums[n] for n in sc)) if sc else set()
-        missing = [x for x in dict.fromkeys(nums) if x not in pool]
+        missing = [_show(x) for x in nums if x not in pool]
         if sc and missing:
             errors.append(f"sentence {si} cites {''.join(f'[{n}]' for n in sc)} but "
                           f"{', '.join(missing)} {'does' if len(missing) == 1 else 'do'} not appear there: "
@@ -221,12 +272,13 @@ def check_answer(answer: str, hits: Sequence[Hit], finish_reason: str | None = N
 
 def render_answer(answer: str, hits: Sequence[Hit], cited: Sequence[int]) -> str:
     """The text the user sees: the answer plus the paper/section/page of every cited passage."""
+    answer = normalize_citations(answer)
     srcs = "\n".join(f"[{n}] {hits[n - 1].chunk.citation()}" for n in cited if 1 <= n <= len(hits))
     return f"{answer.strip()}\n\nSources:\n{srcs}" if srcs else answer.strip()
 
 
-def render_passages(hits: Sequence[Hit], chars: int = 300) -> str:
-    lines = [NO_VERIFIED_ANSWER]
+def render_passages(hits: Sequence[Hit], chars: int = 300, header: bool = True) -> str:
+    lines = [NO_VERIFIED_ANSWER] if header else []
     for i, h in enumerate(hits, 1):
         t = " ".join(h.chunk.text.split())
         lines.append(f"[{i}] {h.chunk.citation()} {t[:chars]}{'...' if len(t) > chars else ''}")
@@ -245,13 +297,28 @@ OUTCOME_TO_STATUS = {
     "tool_timeout": "timeout",          # the BM25 tool call timed out
     "model_timeout": "timeout",         # a model call hit the client timeout (never retried)
     "rate_limited": "rate_limited",     # a model call still got 429 after its retries
+    "rate_limited_daily": "rate_limited",  # daily budget used up: passages shown, no model answer
     "model_error": "error",             # HTTP error (after the one 5xx retry), network or stream error
     "error": "error",                   # unexpected exception in the pipeline
+    "user_gave_up": "timeout",          # the (simulated) user stopped waiting; set by the load generator
 }
 
 
 def call_failure_outcome(call: CallRecord) -> str:
+    if call.outcome == "rate_limited" and call.attempts and call.attempts[-1].limit_type == DAILY:
+        return "rate_limited_daily"
     return {"rate_limited": "rate_limited", "timeout": "model_timeout"}.get(call.outcome, "model_error")
+
+
+def failure_reply(call: CallRecord, hits: Sequence[Hit] | None) -> str:
+    """What the person sees when the model call failed."""
+    outcome = call_failure_outcome(call)
+    if outcome == "rate_limited_daily":
+        reset = call.headers.get("x-ratelimit-reset-requests", "a few minutes")
+        return DAILY_BUDGET.format(reset=reset) + ("\n" + render_passages(hits, header=False) if hits else "")
+    if hits is not None:
+        return render_passages(hits)
+    return SERVICE_PROBLEM.format(why=outcome.replace("_", " "))
 
 
 @dataclass(frozen=True)
@@ -286,11 +353,14 @@ class Pipeline:
         self.cfg, self.clock = config, clock
 
     async def answer(self, question: str, request_id: str | None = None, scenario: str = "adhoc",
-                     sink: Sink | None = None) -> dict:
+                     sink: Sink | None = None, give_up_s: float | None = None) -> dict:
+        """give_up_s: a simulated user who stops waiting if no first token arrives in time
+        (outcome user_gave_up -> status timeout; still exactly one row)."""
         rid = request_id or f"req-{uuid.uuid4().hex[:10]}"
         t0, start_time = self.clock(), utc_iso()
         ms = lambda t: round((t - t0) * 1000, 1)  # noqa: E731
         calls: list[CallRecord] = []
+        in_progress: dict = {}           # the model call running now, traced as cancelled if the user gives up
         steps: list[dict] = []
         out = {"outcome": "error", "text": "", "first_token_ms": None, "total_ms": None}
 
@@ -316,7 +386,9 @@ class Pipeline:
                              details_fn: Callable[[CallRecord], dict] | None = None):
             ts = self.clock()
             stream = self.client.stream_chat(model, messages, max_tokens, effort, self.cfg.call_timeout_s)
+            in_progress.update(step=step, ts=ts, record=stream.record)
             call = await stream.collect()     # drafts are buffered: nothing reaches the user before the check
+            in_progress.clear()
             calls.append(call)
             te = self.clock()
             extra = details_fn(call) if details_fn else {}   # computed before the trace line is written
@@ -345,77 +417,105 @@ class Pipeline:
         def done(route=None) -> dict:
             return self._finish(rid, scenario, start_time, calls, steps, out, route=route)
 
-        try:
-            # a) route: decides in/out of scope only
-            def route_details(c: CallRecord) -> dict:
-                parsed = parse_router(c.text) if c.ok else None
-                # router unusable (error, 429 or bad JSON): carry on as in scope
-                return {"route": parsed or {"keywords": [], "papers": [], "in_scope": True},
-                        "router_fallback": parsed is None}       # keywords and papers: logged, not used
-
-            await model_step("route", self.cfg.router_model, router_messages(question),
-                             self.cfg.router_max_tokens, self.cfg.router_effort, details_fn=route_details)
-            route = steps[-1]["route"]
-            if not route["in_scope"]:
-                await stream_to_user(OUT_OF_SCOPE, "refused_out_of_scope")
-                return done(route)
-
-            # b) retrieve: BM25 tool call on the question as is, with a timeout
-            ts = self.clock()
+        async def body() -> dict:
             try:
-                hits = await asyncio.wait_for(asyncio.to_thread(self.tool.search, question),
-                                              timeout=self.cfg.retrieval_timeout_s)
-            except asyncio.TimeoutError:
+                # a) route: decides in/out of scope only
+                def route_details(c: CallRecord) -> dict:
+                    parsed = parse_router(c.text) if c.ok else None
+                    # router unusable (error, 429 or bad JSON): carry on as in scope
+                    route = parsed or {"keywords": [], "papers": [], "in_scope": True}
+                    overridden = False
+                    if not route["in_scope"] and names_paper_topic(question):
+                        route = {**route, "in_scope": True}      # deterministic guard over the 20b router
+                        overridden = True
+                    return {"route": route, "router_fallback": parsed is None,
+                            "router_overridden": overridden}     # keywords and papers: logged, not used
+
+                await model_step("route", self.cfg.router_model, router_messages(question),
+                                 self.cfg.router_max_tokens, self.cfg.router_effort, details_fn=route_details)
+                route = steps[-1]["route"]
+                if not route["in_scope"]:
+                    await stream_to_user(OUT_OF_SCOPE, "refused_out_of_scope")
+                    return done(route)
+
+                # b) retrieve: BM25 tool call on the question as is, with a timeout
+                ts = self.clock()
+                try:
+                    hits = await asyncio.wait_for(asyncio.to_thread(self.tool.search, question),
+                                                  timeout=self.cfg.retrieval_timeout_s)
+                except asyncio.TimeoutError:
+                    trace("retrieve", ts, self.clock(), tool=self.tool.name, setting=self.tool.setting, query=question,
+                          timed_out=True, timeout_s=self.cfg.retrieval_timeout_s)
+                    await stream_to_user(SEARCH_PROBLEM, "tool_timeout")
+                    return done(route)
                 trace("retrieve", ts, self.clock(), tool=self.tool.name, setting=self.tool.setting, query=question,
-                      timed_out=True, timeout_s=self.cfg.retrieval_timeout_s)
-                await stream_to_user(SEARCH_PROBLEM, "tool_timeout")
-                return done(route)
-            trace("retrieve", ts, self.clock(), tool=self.tool.name, setting=self.tool.setting, query=question,
-                  timed_out=False, hits=[{"n": i, "chunk_id": h.chunk.chunk_id, "citation": h.chunk.citation(),
-                                          "score": round(h.score, 3), "tokens": h.chunk.n_tokens}
-                                         for i, h in enumerate(hits, 1)])
+                      timed_out=False, hits=[{"n": i, "chunk_id": h.chunk.chunk_id, "citation": h.chunk.citation(),
+                                              "paper": h.chunk.paper_id, "page_start": h.chunk.page_start,
+                                              "page_end": h.chunk.page_end,
+                                              "score": round(h.score, 3), "tokens": h.chunk.n_tokens}
+                                             for i, h in enumerate(hits, 1)])
 
-            # c) draft
-            call = await model_step("draft", self.cfg.draft_model, draft_messages(question, hits),
-                                    self.cfg.draft_max_tokens, self.cfg.draft_effort)
-            if not call.ok:
-                outcome = call_failure_outcome(call)
-                await stream_to_user(SERVICE_PROBLEM.format(why=outcome.replace("_", " ")), outcome)
-                return done(route)
-
-            # d) check, at most one redraft
-            ts = self.clock()
-            chk = check_answer(call.text, hits, call.finish_reason)
-            trace("check", ts, self.clock(), **asdict(chk))
-            if not chk.ok:
-                call = await model_step("redraft", self.cfg.draft_model,
-                                        redraft_messages(question, hits, call.text, chk.errors),
+                # c) draft
+                call = await model_step("draft", self.cfg.draft_model, draft_messages(question, hits),
                                         self.cfg.draft_max_tokens, self.cfg.draft_effort)
                 if not call.ok:
-                    await stream_to_user(render_passages(hits), call_failure_outcome(call))
-                    return done(route)
-                ts = self.clock()
-                chk = check_answer(call.text, hits, call.finish_reason)
-                trace("recheck", ts, self.clock(), **asdict(chk))
-                if not chk.ok:
-                    await stream_to_user(render_passages(hits), "refused_check_failed")
+                    outcome = call_failure_outcome(call)
+                    await stream_to_user(failure_reply(call, hits if outcome == "rate_limited_daily" else None),
+                                         outcome)
                     return done(route)
 
-            # e) stream the checked answer
-            if chk.refusal and not chk.cited:
-                await stream_to_user(REFUSAL, "refused")
-            else:
-                await stream_to_user(render_answer(call.text, hits, chk.cited), "answered")
+                # d) check, at most one redraft
+                ts = self.clock()
+                chk = check_answer(call.text, hits, call.finish_reason)
+                trace("check", ts, self.clock(), **asdict(chk))
+                if not chk.ok:
+                    call = await model_step("redraft", self.cfg.draft_model,
+                                            redraft_messages(question, hits, call.text, chk.errors),
+                                            self.cfg.draft_max_tokens, self.cfg.draft_effort)
+                    if not call.ok:
+                        await stream_to_user(failure_reply(call, hits), call_failure_outcome(call))
+                        return done(route)
+                    ts = self.clock()
+                    chk = check_answer(call.text, hits, call.finish_reason)
+                    trace("recheck", ts, self.clock(), **asdict(chk))
+                    if not chk.ok:
+                        await stream_to_user(render_passages(hits), "refused_check_failed")
+                        return done(route)
+
+                # e) stream the checked answer
+                if chk.refusal and not chk.cited:
+                    await stream_to_user(REFUSAL, "refused")
+                else:
+                    await stream_to_user(render_answer(call.text, hits, chk.cited), "answered")
+                return done(route)
+            except Exception as e:  # still exactly one row per request
+                self.traces.write({"type": "note", "request_id": rid, "note": f"exception: {type(e).__name__}: {e}"})
+                if out["first_token_ms"] is None:
+                    try:
+                        await stream_to_user(SERVICE_PROBLEM.format(why="internal error"), "error")
+                    except Exception:
+                        pass
+                out["outcome"] = "error"
+                return done()
+
+        if give_up_s is None:
+            return await body()
+        try:
+            return await asyncio.wait_for(body(), give_up_s)
+        except asyncio.TimeoutError:
+            # the user stopped waiting before the first token: work in progress is cancelled
+            out.update(outcome="user_gave_up", text="", first_token_ms=None, total_ms=ms(self.clock()))
+            self.traces.write({"type": "note", "request_id": rid, "step": "give_up",
+                               "note": f"user gave up: no first token within {give_up_s:g} s",
+                               "at_ms": out["total_ms"]})
+            if in_progress:   # the call the user gave up on: its attempts so far (429s, waits) still go to the trace
+                rec = in_progress["record"]
+                rec.outcome = "cancelled"
+                trace(in_progress["step"], in_progress["ts"], self.clock(), rec, cancelled=True,
+                      attempts_so_far=len(rec.attempts))
+                calls.append(rec)   # its retries count; tokens are unknown (None -> 0)
+            route = next((st.get("route") for st in steps if st["step"] == "route"), None)
             return done(route)
-        except Exception as e:  # still exactly one row per request
-            self.traces.write({"type": "note", "request_id": rid, "note": f"exception: {type(e).__name__}: {e}"})
-            if out["first_token_ms"] is None:
-                try:
-                    await stream_to_user(SERVICE_PROBLEM.format(why="internal error"), "error")
-                except Exception:
-                    pass
-            out["outcome"] = "error"
-            return done()
 
     def _finish(self, rid: str, scenario: str, start_time: str, calls: list[CallRecord], steps: list[dict],
                 out: dict, route: dict | None = None) -> dict:

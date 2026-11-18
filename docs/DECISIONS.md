@@ -95,14 +95,116 @@ A sentence containing a number without a citation fails the check. Decided by me
 ### How raw results flow into results.csv [26]
 Each run writes results/raw/run_<scenario>_<UTC>.csv. scripts/build_results.py rebuilds results/results.csv from all raw run files, sorted by start_time, never edited by hand. Decided by me, 2026-11-12.
 
+### Grades
+Grades go to results/raw/grades_<run>.csv (scripts/apply_grades.py; grade_from records "final" or "suggested"). scripts/build_results.py fills answer_grade in results/results.csv from them. Raw run files are never edited. Decided by me, 2026-11-12.
+
+### q01 retrieval miss
+Keep q01's retrieval miss as it is (medium setting: the raw question does not retrieve the "h = 8" passage): it is a real finding. Decided by me, 2026-11-12.
+
+### Cut for time
+Cut for time: the daily-budget-exhausted scenario runs on the stand-in only; retrieval settings 2 and 3 are evaluated on 15 questions, setting 1 on all 26. Decided by me, 2026-11-12.
+
+### User give-up
+A user give-up is recorded as status timeout, like a tool timeout. Decided by me, 2026-11-12.
+
+## Decided by Claude, authorised by me on 2026-11-17
+
+On 2026-11-17 I told Claude: "you are free to finish and take decisions by yourself". Each entry below is Claude's choice; I can defend it or overrule it.
+
+### Daily limit [16]
+A daily-limit 429 is never retried. Groq labels it "requests"; only the message says "per day (RPD)". The person gets "Today's answer budget is used up…", the reset time from x-ratelimit-reset-requests, and the retrieved passages (marked as not checked by a model). Status: rate_limited.
+Evidence: traces_daily_exhausted_20261113T073425Z (requests 0013/0015: 3 immediate useless retries under the earlier rule).
+
+### Per-minute limit [15]
+Requests queue behind the per-model rate gate and wait. Nobody is shed and the answer is never weakened. A person waits until their first token, or gives up after 15 s.
+Evidence: run_sustained_overload_20261113T080028Z (72.7% gave up, 27.3% succeeded).
+
+### Pipeline shape [6, 7]
+- Two model calls per request (20b router, 120b draft), plus at most one redraft.
+- Tools: BM25 retrieval (with a timeout) and the deterministic citation/number check.
+
+### Retry details [17, 18]
+- Retries happen per model call.
+- At most 3 retries for 429s, with jitter 0–0.25 s.
+- A 429 without retry-after waits 2.0 s.
+- An unknown 429 type is measured from now.
+
+### Chunking settings [11]
+Section-aware chunks with the three Table 3 settings: small (128 tokens, 8 pieces), medium (256, 5) and large (512, 3), no re-rank. Medium is the main setting, used for load tests and the full 26-question eval.
+
+### Retrieval near the limit [14]
+Nothing changes near the limit: same k, same prompt. The 120b draft prompt dominates reserved tokens, and the check needs the passages it cites.
+
+### Load generator and patience [19, 20]
+- Open-loop Poisson arrivals (seeded).
+- Fixed patience: a person gives up if no first token arrives within 15 s.
+
+### Stand-in [21, 22]
+- An HTTP server compatible with Groq's API, so the client code is the same.
+- Latency resampled from whole measured requests.
+- Slowdown under load, the 5xx rate and the slow tail are assumptions (docs/standin.md).
+
+### Grading [23]
+scripts/pregrade.py suggests a grade from a key-fact rubric plus a gold-citation match; a human sets final_grade.
+
+### Question mix [24]
+The 26 questions in eval/questions.yaml as written (4 unanswerable, 2 term traps, 3 cross-paper).
+
+### Cost [25]
+Groq list prices with the router/draft token split stated in docs/tables.md.
+
+### The fast target [4]
+At steady load, 95% of people get a first token before they would give up (15 s).
+
+### Tables
+One row per scenario. Superseded or invalid runs are listed with their reasons in results/excluded_runs.csv; their rows stay in results.csv.
+
+### 15-question subset (cut for time)
+Small and large are evaluated on q01, q03, q04, q07, q08, q10, q12, q14, q15, q16, q18, q20, q21, q23, q25. That is the same type mix as the 26 (5 single-fact, 3 table, 2 explanation, 2 cross-paper, 1 term trap, 2 unanswerable), and q23/q25 are the near-miss unanswerables. Medium is "setting 1", with all 26.
+
+## Personal project phase (from 2026-11-17)
+
+On 2026-11-17 I said: "this project is no longer an assignment, it is now a personal project that I aim to present. I no longer need How I worked with the assistant and so on, I want the project to be valid and well evaluated." Claude takes the decisions below under the same authorisation as above.
+
+### What is presented
+A project report (docs/report.md) and the tables (docs/tables.md). There are no assignment-only sections (assistant conversation, Vaani feedback, 2-page limit).
+
+### Real evaluation: all 26 questions on all three settings
+This supersedes "Cut for time": all 26 questions run on each setting (78 pipeline runs). The 120b reserved tokens (130.5K–305K) can exceed the documented 200K/day, so the runs are split over two days: medium + small on day 1, large on day 2. Every real run still needs my OK.
+
+### Load tests: 10 minutes × 3 seeds per scenario
+The 150 s single runs had 7–60 requests, so p95 = p99 = one request, and the success intervals overlapped (sustained 27.3% [17.3, 40.2] against RPM-halved 21.7% [13.1, 33.6]). Each scenario now runs for 600 s with seeds 1, 2 and 3, and the runs are pooled. docs/tables.md adds an uncertainty table: 95% Wilson intervals for success, 95% bootstrap intervals for first-token p50/p95, and the spread across seeds. The superseded short runs are listed in results/excluded_runs.csv.
+
+### Stand-in validation
+The stand-in is checked against the real service on the same workload: `run_eval.py --standin` runs the real-eval questions against the stand-in, and scripts/compare_standin.py writes docs/standin_validation.md (per-step medians, p90, Kolmogorov-Smirnov distance).
+
+### Grading validity
+The raw grades files keep the rubric's suggested grade next to the final grade. docs/tables.md reports how often they agree, and how many final grades were typed by hand.
+
+### Day 1 real eval (2026-11-17, medium + small, all 26 questions, my OK)
+Runs run_eval_medium_20261117T102821Z and run_eval_small_20261117T103158Z are kept as recorded: they measure the system before the fixes below.
+
+### Check fixes from real day-1 drafts
+Eight real drafts were wrongly failed. The fixes, frozen with those drafts in tests/fixtures/day1_false_check_failures.json:
+- an interval `[0,1]^{…}` is not a citation (a bracket containing 0, or followed by ^ _ {, is maths);
+- a narrow no-break, thin or no-break space between digit groups is a thousands separator;
+- superscript decimals (`⁻⁰·⁵`) are read as one number;
+- "Paper N" / "passage N" are labels, not facts.
+
+Replaying all day-1 drafts: those 8 now pass, and no answer that passed now fails.
+
+### Router guard
+The 20b router refused q14 ("…H-Net…on DNA?") in both settings. An out-of-scope verdict is now overruled when the question names a term from the papers (`names_paper_topic`; the trace shows `router_overridden`). The router keeps the final say on everything else.
+
+### Paced real evals
+Back to back, every draft after the first ~6 hit a token-limit 429 (median retry wait 9.2 s), so first-token time measured the eval's own throttling. run_eval.py now waits, between questions, for the 120b token bucket to refill for the next reservation (`--no-pace` turns it off). Load is measured by the stand-in tests, not the eval.
+
+### Grading of day 1
+The rubric now compares numeric facts by value, like the check. Claude reviewed every answer the rubric marked wrong, and spot-checked the rest. 9 of 52 grades changed, all from wrong to correct, for paraphrased facts. Every change has its reason in eval/grades_*.csv. Where a question's key facts list context the question doesn't ask for (q04 codebook size, q09 other models), the answer is graded on what was asked. Where the author's rubric demands more (q13: both 41.8 and 41.0), it is applied as written.
+
+### Stand-in calibration v2
+Validation showed calibration v1 (2026-11-12 data only) was 1.6–1.9× slower than the real service on 2026-11-17. v2 adds the real medium eval's calls; it was validated on the held-out small eval (router 1.18×, draft 1.09×, KS 0.37–0.42). The load campaign was re-run on v2; the v1 campaign is excluded with this reason.
+
 ## Still open
 
-From `docs/open_decisions.md`: 4, 6, 7, 11, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25.
-- 6: the pipeline now makes 2 model calls per request (router, draft), plus at most one redraft. Not recorded as a decision yet.
-- 18: the code retries per model call. Not recorded as a decision yet.
-- 11 is partly settled: section-aware chunking is decided, but the sizes are still the three Table 3 settings.
-- 17 is partly settled: the retry waits and the 5xx rule are decided. Still open:
-  - the 429 retry count (code: 3);
-  - the jitter size (code: 0–0.25 s);
-  - the wait when a 429 has no retry-after (code: 2.0 s);
-  - what an unknown 429 type does (code: measured from now).
+None from `docs/open_decisions.md`.

@@ -122,6 +122,20 @@ class AttemptResult:
 # ------------------------------------------------------------- retry policy ---
 
 SERVER_ERRORS = frozenset({500, 502, 503, 498})
+DAILY = "requests_per_day"
+
+
+def limit_kind(body: str) -> str | None:
+    """429 body -> "requests" (per minute), "tokens" (per minute) or "requests_per_day".
+    Groq labels the daily limit with error.type "requests" too; only the message says "per day (RPD)"."""
+    try:
+        err = json.loads(body).get("error") or {}
+    except (ValueError, AttributeError):
+        return None
+    kind = err.get("type")
+    if kind == "requests" and re.search(r"per day|\(RPD\)", err.get("message", ""), re.I):
+        return DAILY
+    return kind
 
 
 @dataclass(frozen=True)
@@ -228,7 +242,10 @@ class ModelClient:
             if res.status == 200:
                 gate.accepted(t_att)
             rate_retries = rec.retries - server_retries
-            if (res.status == 429 and not got_token and rate_retries < self.policy.max_retries
+            # daily limit: never retried (the next credit is ~86 s away; measured from an old accepted request
+            # the wait can already be in the past, which made the client fire 3 useless retries in a row)
+            if (res.status == 429 and not got_token and res.limit_type != DAILY
+                    and rate_retries < self.policy.max_retries
                     and self.clock() < deadline):
                 ra = res.retry_after_s if res.retry_after_s is not None else self.policy.default_retry_after_s
                 # "requests" limit: the window refills from accepted requests -> measure from the last one.
@@ -299,14 +316,19 @@ class GroqClient(ModelClient):
 
     source = "real"
 
-    def __init__(self, key: str | None = None, temperature: float = 0.0, **kw):
+    def __init__(self, key: str | None = None, temperature: float = 0.0, api_url: str = API_URL,
+                 source: str = "real", **kw):
+        """api_url/source: point the SAME client code at the stand-in (standin/server.py), e.g.
+        GroqClient(key="standin", api_url="http://127.0.0.1:8765/openai/v1/chat/completions", source="stand-in").
+        Each instance has its own rate gates, so a stand-in client never shares state with a real one."""
         super().__init__(**kw)
+        self.api_url, self.source = api_url, source
         self._key = key or load_key()
         self.temperature = temperature
         self._http = None
 
     def __repr__(self) -> str:  # never show the key
-        return f"GroqClient(temperature={self.temperature})"
+        return f"GroqClient(temperature={self.temperature}, source={self.source})"
 
     async def _client(self):
         import httpx
@@ -330,7 +352,7 @@ class GroqClient(ModelClient):
         remaining = max(0.1, deadline - self.clock())
         http = await self._client()
         try:
-            async with http.stream("POST", API_URL, json=body, headers=headers,
+            async with http.stream("POST", self.api_url, json=body, headers=headers,
                                    timeout=httpx.Timeout(remaining, connect=min(10.0, remaining))) as r:
                 res.status = r.status_code
                 res.headers = {k.lower(): v for k, v in r.headers.items()
@@ -340,10 +362,7 @@ class GroqClient(ModelClient):
                     raw = (await r.aread()).decode("utf-8", errors="replace")
                     res.outcome = "http_error"
                     res.error = re.sub(r"org_[A-Za-z0-9]+", "org_REDACTED", raw)[:500]
-                    try:
-                        res.limit_type = (json.loads(raw).get("error") or {}).get("type")
-                    except (ValueError, AttributeError):
-                        res.limit_type = None
+                    res.limit_type = limit_kind(raw)
                     return
                 async for line in r.aiter_lines():
                     if self.clock() > deadline:

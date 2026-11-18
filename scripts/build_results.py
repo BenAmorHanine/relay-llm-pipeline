@@ -2,6 +2,7 @@
 
 results.csv is derived: never edit it by hand, re-run this script. Raw run files are only read.
 Rows are sorted by start_time (UTC ISO, so text order = time order), then request_id.
+answer_grade is filled from results/raw/grades_<run>.csv (scripts/apply_grades.py); run files keep it empty.
 The script refuses to write anything if a raw file has the wrong header, a row has a value
 outside the brief's sets (relay.recording.validate_row), or a request_id appears twice.
 
@@ -19,7 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
-from relay.recording import RESULTS_COLUMNS, validate_row  # noqa: E402
+from relay.recording import GRADES, RESULTS_COLUMNS, validate_row  # noqa: E402
 
 
 def build(raw_dir: Path, out: Path) -> tuple[int, int]:
@@ -45,6 +46,25 @@ def build(raw_dir: Path, out: Path) -> tuple[int, int]:
                     problems.append(f"{f.name}:{i}: request_id {rid} already in {seen[rid]}")
                 seen[rid] = f"{f.name}:{i}"
                 rows.append(row)
+    # grades: results/raw/grades_<run>.csv (scripts/apply_grades.py) fill answer_grade; raw run files untouched
+    grade_of: dict[str, tuple[str, str]] = {}
+    for gf in sorted(Path(raw_dir).glob("grades_*.csv")):
+        with gf.open(encoding="utf-8", newline="") as fh:
+            for i, g in enumerate(csv.DictReader(fh), 2):
+                rid = g["request_id"]
+                if rid in grade_of:
+                    problems.append(f"{gf.name}:{i}: request_id {rid} already graded in {grade_of[rid][1]}")
+                if g["answer_grade"] not in GRADES - {""}:
+                    problems.append(f"{gf.name}:{i}: grade {g['answer_grade']!r}")
+                if rid not in seen:
+                    problems.append(f"{gf.name}:{i}: request_id {rid} is in no run file")
+                grade_of[rid] = (g["answer_grade"], gf.name)
+    for row in rows:
+        if row["request_id"] in grade_of:
+            g = grade_of[row["request_id"]][0]
+            if row["answer_grade"] and row["answer_grade"] != g:
+                problems.append(f"{row['request_id']}: run file says {row['answer_grade']!r}, grades file {g!r}")
+            row["answer_grade"] = g
     if problems:
         raise SystemExit("Not writing results.csv:\n  " + "\n  ".join(problems))
     rows.sort(key=lambda r: (r["start_time"], r["request_id"]))

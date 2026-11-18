@@ -574,3 +574,152 @@
 - What I checked and how:
 - What was wrong / what I caught:
 - Decision I made (and if I overruled Claude, why):
+
+## 2026-11-12 – Step 6 – Eval runner, pre-grading, cut for time
+- Prompt (verbatim):
+  ```text
+  Step 6. We are short on time: I submit in under 5 hours. Work fast, keep scope tight, numbered items, end with status. No real Groq call without my explicit OK.
+
+  1. Fix results.csv values to match the brief exactly: status only {ok, rate_limited, timeout, error}; source only {real, stand-in}; answer_grade only {correct, wrong, refused_correctly, refused_wrongly} or empty until graded. A model refusal is status ok. Tool timeout and user give-up are status timeout. Tests write only to a temp dir and never write source=fake into results. Add a test rejecting any other value.
+
+  2. Apply and record in docs/DECISIONS.md (decided by me, 2026-11-12): draft max_tokens 400 (cal-006..010); router max_tokens 200 (2/5 small 20b calls hit 128); retrieval uses the raw question, router only decides in/out of scope; request-429: wait retry-after from the last accepted request, token-429: wait retry-after from now, jitter on top in both; 500/502/503/498 retried once; client timeouts never retried; an uncited number fails the check; each run writes results/raw/run_<scenario>_<UTC>.csv and scripts/build_results.py rebuilds results/results.csv. Also record: "Cut for time: the daily-budget-exhausted scenario runs on the stand-in only; retrieval settings 2 and 3 are evaluated on 15 questions, setting 1 on all 26."
+
+  3. Write scripts/run_eval.py: runs the pipeline on eval/questions.yaml (option --setting, option --questions q01,q02,...), real Groq, sequential, writes results/raw/run_eval_<setting>_<UTC>.csv and traces. Dry run by default (requests and reserved tokens per model); --go to run.
+
+  4. Write scripts/pregrade.py: for each answer in a run, suggest a grade: unanswerable question → refused_correctly if the answer refuses, else wrong; answerable → refused_wrongly if it refuses; correct if all its FACTS strings appear in the answer and at least one citation points to a gold paper+page, else wrong. Write eval/grades_<run>.csv with columns qid, question, answer, citations, suggested_grade, reason, final_grade (empty). Then scripts/apply_grades.py copies final_grade (or suggested_grade if I leave final empty, and record which) into the run CSV's answer_grade.
+
+  5. Show me the dry run of run_eval.py for setting "medium" on all 26 questions, and wait for my OK. I will run --go myself.
+
+  6. Short Step 6 entry in docs/WORKLOG.md (prompt verbatim).
+  ```
+- What Claude did:
+  - **Items 1–2:** already done in Step 5b. New this step:
+    - outcome `user_gave_up` maps to timeout (with a test);
+    - retrieve traces now carry each hit's paper and pages, for grading;
+    - DECISIONS.md gains "Cut for time" (verbatim) and "User give-up".
+  - **Item 3:** scripts/run_eval.py.
+    - Dry run by default; `--go` uses GroqClient, runs sequentially, and writes run_eval_<setting>_<UTC>.csv plus traces_eval_<setting>_<UTC>.jsonl.
+    - request_id is `eval-<setting>-<UTC>-<qid>`.
+    - It stops after 3 rate_limited/error rows in a row.
+  - **Item 4:** scripts/pregrade.py written and smoke-tested on a fake run in the scratchpad (correct, wrong, refused_wrongly, refused_correctly and status-not-ok paths). Rows whose status is not ok get no suggestion.
+    - scripts/apply_grades.py was NOT written: it would rewrite answer_grade inside raw run files, against the CLAUDE.md rule "Raw results are append-only". Claude asked how to proceed.
+  - **Item 5:** dry run, medium, 26 questions:
+    - 20b: 26 requests, 11,396 reserved tokens.
+    - 120b: 26–52 requests, 43,578–101,820 reserved tokens.
+    - Total: 52–78 requests, 54,974–113,216 reserved tokens.
+  - Found while smoke-testing: in the medium setting, the raw q01 question does not retrieve the "h = 8" passage.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):
+
+## 2026-11-13 – Step 6b – Partial real run stopped: check and router fixes
+Partial run stopped after 11 questions: over-strict check refused correct answers and its redrafts doubled token use (TTFT up to 23 s).
+- Prompt (verbatim):
+  ```text
+  URGENT, before continuing Step 7. I stopped results/raw/run_eval_medium_20261112T225309Z after 11 questions: 5 refused_check_failed (q02, q03, q08, q10, q11), q04 refused as out of scope (it is about Mimi, clearly in scope), q01/q06/q09 refused by the model. Do not modify that partial run file.
+
+  1. From its traces, show me for q02, q03, q08, q10, q11: the draft and the exact check error, in one short table.
+  2. Fix the number check so equivalent notations match (× · x *, 10^-4 / 10−4 / e-4, thousands separators, number words one to twelve, numbers attached to units like 12.5Hz or 160ms), but still fail on a genuinely different number. Add tests built from these real failures.
+  3. Router: put the three paper titles and a one-line topic for each in its prompt. Refuse as out of scope only when the question is clearly unrelated to all three papers; when unsure, in scope. Show me the new prompt.
+  4. From the traces of q06 and q09, say whether a gold page was among the retrieved passages.
+  5. Show the dry run again. Add a WORKLOG entry: "Partial run stopped after 11 questions: over-strict check refused correct answers and its redrafts doubled token use (TTFT up to 23 s)."
+  Then continue Step 7.
+  ```
+- What Claude did:
+  - The partial run files were only read, never modified. The run CSV holds 13 rows (q01–q13). Max first_token_ms is 22,973 (q08).
+  - **Main cause:** gpt-oss wrote citations as 【1】 / 【1†L4-L5】, not [1]. The check saw "no [n] citation" and counted the citation digits as uncited numbers. Second cause: superscript exponents (10⁻⁹, 10¹⁸) were read as "10", "9" / "1018".
+  - **Fix:**
+    - `normalize_citations` maps 【n】, ［n］ and 【n†…】 to [n] in the check and in the shown answer.
+    - `textnorm.number_values` compares numeric values. It handles × · x *, ^ / unicode minus / superscripts / e-notation, thousands separators, number words one–twelve, and units attached (12.5Hz, 160ms). The passage side also counts the parts of a scientific number.
+  - **Replay:** all 10 real drafts and redrafts of q02/q03/q08/q10/q11 now pass. q13's real redraft still fails, correctly: it cites [1] for 41.8, which is only in [2]/[3].
+  - **Tests:** verbatim real drafts pass; the same drafts with one number changed fail; the q13 wrong source fails; notation-equivalence tests. 39 tests total, all pass.
+  - **Router prompt:** now has titles plus a one-line topic per paper; out of scope only when clearly unrelated to all three, in scope when unsure. About 319 tokens; 20b reserved for 26 questions goes from 11,396 to 15,504.
+  - **q06 / q09:** a gold page WAS retrieved for both (q06 gold p.16: passage [2] §3.4.4 pp.16-17; q09 gold p.12: passages [1], [3], [4]). The model refused anyway.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):
+
+## 2026-11-13 – Step 7 – Grades option A, stand-in, load tests, tables
+- Prompt (verbatim):
+  ```text
+  Choose A for apply_grades.py: grades go to results/raw/grades_<run>.csv, build_results.py fills answer_grade in results/results.csv. Record it in DECISIONS.md. Keep q01's retrieval miss as it is: it is a real finding.
+
+  Then Step 7. Short on time. Numbered items, end with status. No real Groq calls in this step (I am running the real eval myself in another window right now, so do not touch results/raw/run_eval_*).
+
+  1. Build the stand-in in standin/: an OpenAI-compatible HTTP server (/v1/chat/completions, streaming SSE, same response headers x-ratelimit-* and retry-after, same 429 JSON bodies with type "requests" or "tokens") so the pipeline uses the same client code. Calibrate from results/raw/calibration_*.jsonl and retry_*.jsonl: resample measured queue time, time to first token and generation speed per model; RPM 30 with the measured rule (admit only if >= 2.0 s since the last accepted request once the burst of 30 is used; rejections don't reset the clock); TPM 8000 charged as prompt + max_tokens, refilling steadily; RPD with the measured 86.4 s whole-period refill (configurable, so a scenario can set a small daily budget); slower under load (service time grows with requests in flight, parameter documented); configurable failure rate (5xx) and slow-success tail. Write docs/standin.md: each parameter, which raw records it comes from, and where the stand-in is least like the real service.
+
+  2. Build loadtest/run_load.py: open-loop arrivals (Poisson), simulated users who give up if no first token within 15 s (status timeout), pipeline pointed at the stand-in, retrieval real (local), results to results/raw/run_<scenario>_<UTC>.csv with source=stand-in plus traces. Scenarios, about 2-3 minutes each: steady (below the limits), burst (sudden spike after a quiet start), sustained_overload (well above the limits), rpm_halved (stand-in RPM set to 15), daily_exhausted (daily budget small enough to run out mid-run). Record queue length over time for the peak queue column. Use a different port and do not share any rate-limit state with the real GroqClient.
+
+  3. Write scripts/make_tables.py: from results/results.csv, produce Tables 2a, 2b and 3 exactly as in the brief (milliseconds, one decimal for percentages, "not measured" where not measured, p50/p95/p99), plus tokens per answer and cost per 1,000 answers from list prices (gpt-oss-120b $0.15/$0.60, gpt-oss-20b $0.075/$0.30 per million in/out; state the assumption used to split tokens by model). Output docs/tables.md.
+
+  4. Run all five scenarios against the stand-in, rebuild results.csv, run make_tables.py and show me the tables.
+
+  5. Short Step 7 entry in docs/WORKLOG.md (prompt verbatim).
+  ```
+- What Claude did:
+  - **Option A:** scripts/apply_grades.py writes results/raw/grades_<run>.csv (request_id, qid, answer_grade, grade_from = final or suggested). build_results.py fills answer_grade from it. Recorded in DECISIONS.md, together with keeping q01's retrieval miss.
+  - **Item 1:** standin/server.py (asyncio HTTP, SSE, Groq-style headers and 429 bodies) and standin/calibrate_standin.py, which writes standin/calibration.json from the 127 accepted / 18 rate-limited real requests. docs/standin.md lists every parameter and its source, and where the stand-in is least like the real service. The load slowdown, 5xx rate and slow tail are assumptions, not measurements.
+  - **Item 2:** loadtest/run_load.py: Poisson arrivals, give-up after 15 s, one stand-in per scenario on its own port.
+    - Pipeline changes: give_up_s (outcome user_gave_up maps to timeout), and a call cancelled by the give-up is still traced with its attempts.
+    - The stand-in counts 429s per model and type.
+    - 40 tests pass.
+  - **Item 3:** scripts/make_tables.py writes docs/tables.md. Rows are one per run (scenario, source, run stamp). It supports an optional, hand-kept results/excluded_runs.csv. Router/draft split for cost: the first 396 input and 76 output tokens of each request are the router.
+  - **Item 4, runs:**
+    - First run of all 5 scenarios: 20261113T073115Z. daily_exhausted with rpd 20 never ran out.
+    - Re-runs (daily with rpd 8; overload scenarios with the cancelled-call tracing) 073425Z / 0735xxZ hit a 359 s freeze of every process at 07:36:04–07:42:03 UTC. Their latency is invalid.
+    - Clean re-runs: 20261113T080028Z. Every run stays in raw.
+  - Found:
+    - Under overload most 429s are token-limit 429s on the 20b router: each route reserves about 600 tokens.
+    - A daily-limit 429 is type "requests". When the last accepted request was more than 87 s ago, the decided rule computes a wait that has already passed, so the client retried at once, three times (traces daily_exhausted 073425Z, requests 0013/0015).
+    - Halving RPM to 15 changed little (success 21.7% against 27.3% in sustained_overload, run 080028Z): TPM binds first.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):
+
+## 2026-11-17 – Step 8 – Finishing: daily-limit fix, decisions, exclusions, README, submission copy, write-up draft
+- Prompt (verbatim):
+  ```text
+  what else is remaining  to do ? you are free to finish and take decisions by yourself
+  ```
+- What Claude did (no Groq calls; CLAUDE.md still requires my OK for real calls):
+  - **Daily-limit fix** (Claude's decision): `limit_kind` reads the 429 body. A daily-limit 429 ("requests" type, message "per day (RPD)") becomes "requests_per_day" and is never retried. The person gets the budget message, the reset time and the passages. Outcome rate_limited_daily, status rate_limited. 42 tests pass.
+  - **Stand-in re-run of daily_exhausted:** run 20261117T101038Z. 0 retries (3 useless ones before), 43.8% rate-limited with passages shown, 0% given up (18.8% before).
+  - **DECISIONS.md:** a section "Decided by Claude, authorised by me on 2026-11-17", covering open decisions 4, 6, 7, 11, 14–25, the tables' exclusions and the 15-question subset. Nothing is left open.
+  - **results/excluded_runs.csv:** 10 runs, each with its reason (superseded, the 359 s freeze, the never-exhausted daily run, the stopped partial eval). make_tables.py lists them under the tables, and their rows stay in results.csv.
+  - **make_tables.py** now also writes Table 1 (from docs/table1_draft.md). docs/tables.md is regenerated.
+  - **make_submission_copy.py** now copies every raw .jsonl/.csv/.txt. Ran it: 52 files plus REDACTION.md in results/submission/; no organization ID is left.
+  - **README.md** gained a "Run it" section (cmd).
+  - **docs/writeup.md:** a draft in the brief's heading order. ⟦FILL⟧ marks numbers from the real eval; ⟦YOURS⟧ marks the personal sections.
+  - **Proposed real eval** (waiting for my OK): medium on all 26 questions; small and large on the 15-question subset.
+    - 20b: 56 requests, 33,408 reserved tokens.
+    - 120b: 56–112 requests, 93,545–218,674 reserved tokens.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):
+
+## 2026-11-17 – Step 9 – Personal project: validity work, day-1 real eval, stand-in validation
+- Prompt (verbatim):
+  ```text
+  ok, here are the changes , this project is no longer an assignment , it is now a personal project that i aim to present. i no loger need How I worked with the assistant and so on , i want the project to be valid and well evaluated and so on .
+  ```
+  Then: "the free tier is refilled every day isnt it ?", "ok go ahead" (OK for day 1: medium + small, 26 questions each), "how is the eval going?".
+- What Claude did:
+  - **Load tests at a size you can trust:** 10 minutes × 3 seeds per scenario. make_tables pools the runs of each scenario and adds an uncertainty table (Wilson and bootstrap 95% intervals, spread across seeds). The old short runs are excluded with reasons.
+  - **Day-1 real eval (my OK):** run_eval_medium_20261117T102821Z and run_eval_small_20261117T103158Z, no failures.
+    - Graded with the improved rubric (numeric facts compared by value), plus Claude's review of every doubtful answer. 9 of 52 grades changed; the rubric agreed on 82.7%.
+    - medium: 50.0% correct and cited, 15.4% wrong, 4/4 unanswerable refused. small: 46.2%, 7.7%, 4/4.
+  - **Found in the day-1 traces, fixed for future runs:**
+    - 8 false check failures: `[0,1]` read as a citation, thousands written with a narrow no-break space, superscript decimals, "Paper N". Frozen as a test fixture.
+    - The router refused q14 as out of scope; a deterministic guard now prevents that.
+    - Back-to-back evals throttle themselves on token-limit 429s, so real evals are paced by default.
+    - 45 tests pass.
+  - **Stand-in validation** (run_eval --standin, scripts/compare_standin.py): calibration v1 was 1.6–1.9× slower than the real service. Calibration v2 (adds the real medium-eval calls) is within 1.18× (router) and 1.09× (draft) on the held-out small run. The campaign was re-run on v2.
+  - **v2 campaign:**
+    - steady: 100% succeeded, first token p50 1,208 ms.
+    - sustained: 23.4% [20.2, 26.9] against RPM-halved 24.7% [21.5, 28.4].
+    - RPM-halved runs had zero request-limit 429s: the 20b router's token limit binds first.
+  - **docs/report.md** written (it replaces docs/writeup.md; no assignment-only sections). docs/standin.md gained a validation section; README reframed as a project.
+  - Waiting for my OK: day 2 (large + a medium re-run on the current system, paced). 20b: 52 requests, ~31K reserved tokens. 120b: 52–104 requests, 89K–207K reserved tokens.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made (and if I overruled Claude, why):

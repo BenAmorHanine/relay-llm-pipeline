@@ -1,0 +1,69 @@
+{
+ "note": "Verbatim drafts from the day-1 real eval that the check wrongly failed (copied from the raw traces named in source).",
+ "drafts": [
+  {
+   "source": "traces_eval_medium_20261117T102821Z.jsonl",
+   "request_id": "eval-medium-20261117T102821Z-q18",
+   "qid": "q18",
+   "setting": "medium",
+   "step": "draft",
+   "text": "Paper 1 (H‑Net, arXiv 2507.07955) adds a normalization layer to each network component (E^s, D^s, M) and uses RMSNorm for this purpose [2].  \nPaper 2 (the original Transformer, arXiv 1706.03762) places layer‑normalization after every sub‑layer in both the encoder and the decoder stacks [4][3].  \nThus, H‑Net employs RMSNorm at the end of each hierarchical block, while the Transformer uses standard LayerNorm after each attention and feed‑forward sub‑layer in both encoder and decoder."
+  },
+  {
+   "source": "traces_eval_medium_20261117T102821Z.jsonl",
+   "request_id": "eval-medium-20261117T102821Z-q22",
+   "qid": "q22",
+   "setting": "medium",
+   "step": "draft",
+   "text": "The model uses a routing module in the chunking layer that produces a confidence score p^s for each token, indicating how likely the token should be passed into the main stage [2].  This confidence p^s (∈[0,1]^{L_s}) is interpreted as the chunking router’s belief that a chunk boundary should be placed at that position [2].  The router’s output therefore dynamically draws chunk boundaries based on these confidence values, allowing the model to segment the input adaptively [3]."
+  },
+  {
+   "source": "traces_eval_medium_20261117T102821Z.jsonl",
+   "request_id": "eval-medium-20261117T102821Z-q22",
+   "qid": "q22",
+   "setting": "medium",
+   "step": "redraft",
+   "text": "The chunking layer contains a routing module that outputs a confidence score p^s for each token, where p^s ∈[0,1]^{L_s} represents the router’s belief that the token should be passed into the main stage [2].  These confidence values are used to dynamically draw chunk boundaries, so the model decides where to split its input based on the router’s per‑token confidence scores [2][3]."
+  },
+  {
+   "source": "traces_eval_small_20261117T103158Z.jsonl",
+   "request_id": "eval-small-20261117T103158Z-q02",
+   "qid": "q02",
+   "setting": "small",
+   "step": "draft",
+   "text": "The base Transformer models were trained for 100 000 steps, which took about 12 hours on a machine with 8 NVIDIA P100 GPUs【1】.  \nThe big Transformer models were trained for 300 000 steps, which took 3.5 days on the same hardware of 8 NVIDIA P100 GPUs【1】【2】."
+  },
+  {
+   "source": "traces_eval_small_20261117T103158Z.jsonl",
+   "request_id": "eval-small-20261117T103158Z-q03",
+   "qid": "q03",
+   "setting": "small",
+   "step": "draft",
+   "text": "The Transformer was trained with the Adam optimizer using β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹ [1].  The learning‑rate schedule follows the formula lrate = d_model⁻⁰·⁵ · min(step_num⁻⁰·⁵, step_num · warmup_steps⁻¹·⁵) and increases linearly for the first warmup_steps steps before decaying proportionally to the inverse square root of the step number [1][3].  The warm‑up period was set to warmup_steps = 4000 [3]."
+  },
+  {
+   "source": "traces_eval_small_20261117T103158Z.jsonl",
+   "request_id": "eval-small-20261117T103158Z-q03",
+   "qid": "q03",
+   "setting": "small",
+   "step": "redraft",
+   "text": "The Transformer was trained with the Adam optimizer using β₁ = 0.9, β₂ = 0.98 and ε = 10⁻⁹ [1].  The learning‑rate schedule follows lrate = d_model⁻⁰·⁵ · min(step_num⁻⁰·⁵, step_num · warmup_steps⁻¹·⁵) [1].  Warm‑up was performed for warmup_steps = 4000, after which the rate decayed proportionally to the inverse square root of the step number [3]."
+  },
+  {
+   "source": "traces_eval_small_20261117T103158Z.jsonl",
+   "request_id": "eval-small-20261117T103158Z-q22",
+   "qid": "q22",
+   "setting": "small",
+   "step": "draft",
+   "text": "The chunking router outputs a confidence value p^s ∈[0,1] for each token, indicating how likely the token should be passed into the main stage and thus where a chunk boundary should be placed [2]. During training, a differentiable smoothing module uses this confidence to keep discrete boundaries when p^s ≈ 1.0 and to blend neighboring chunks when p^s ≈ 0.5, creating an adaptive error‑correction mechanism [5]. At inference time, H‑Net dynamically draws boundaries based on these learned confidences, often aligning them with natural delimiters such as whitespace characters [8]. Consequently, the model decides splits by evaluating per‑token confidence and adjusting boundaries through the smoothing module. This process allows H‑Net to allocate compute adaptively across tokens [1]."
+  },
+  {
+   "source": "traces_eval_small_20261117T103158Z.jsonl",
+   "request_id": "eval-small-20261117T103158Z-q22",
+   "qid": "q22",
+   "setting": "small",
+   "step": "redraft",
+   "text": "The chunking router produces a confidence value p^s ∈[0,1] for each token, indicating whether the token should be passed into the main stage and thus where a chunk boundary may be placed [2]. A differentiable smoothing module uses this confidence to keep discrete boundaries when p^s ≈ 1.0 and to blend neighboring chunks when p^s ≈ 0.5, providing adaptive error correction [5]. At inference time, H‑Net dynamically draws boundaries based on the learned confidences, often aligning them with natural delimiters such as whitespace characters [8]. This per‑token confidence‑driven process lets the model decide where to split its input into chunks [1]."
+  }
+ ]
+}

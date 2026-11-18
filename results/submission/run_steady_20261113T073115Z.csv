@@ -1,0 +1,8 @@
+request_id,scenario,source,start_time,first_token_ms,total_ms,status,retries,tokens_in,tokens_out,retrieval_setting,answer_grade
+steady-20261113T073115Z-0000,steady,stand-in,2026-11-13T07:31:22.956Z,3070.6,3070.8,ok,0,1560,149,medium,
+steady-20261113T073115Z-0001,steady,stand-in,2026-11-13T07:31:45.966Z,2387.5,2387.6,ok,0,1845,273,medium,
+steady-20261113T073115Z-0002,steady,stand-in,2026-11-13T07:32:28.412Z,11708.7,11708.8,ok,0,1805,151,medium,
+steady-20261113T073115Z-0003,steady,stand-in,2026-11-13T07:32:40.353Z,4002.6,4002.7,ok,0,1586,296,medium,
+steady-20261113T073115Z-0004,steady,stand-in,2026-11-13T07:33:02.990Z,6794.9,6795.0,ok,0,1710,108,medium,
+steady-20261113T073115Z-0005,steady,stand-in,2026-11-13T07:33:16.706Z,1377.9,1377.9,ok,0,1668,237,medium,
+steady-20261113T073115Z-0006,steady,stand-in,2026-11-13T07:33:19.391Z,2612.6,2612.7,ok,0,1856,160,medium,

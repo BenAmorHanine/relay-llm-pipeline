@@ -3,8 +3,8 @@
 Usage (from the repo root, cmd):
     .venv\\Scripts\\python.exe scripts\\make_submission_copy.py
 
-Reads every results/raw/*.jsonl (read-only; results/raw/ is never modified) and
-writes results/submission/<same name>.jsonl with every Groq organization ID
+Reads every results/raw/*.jsonl, *.csv and *.txt (read-only; results/raw/ is never modified) and
+writes results/submission/<same name> with every Groq organization ID
 (pattern org_ followed by letters/digits) replaced by "org_REDACTED".
 Nothing else is changed: line order, all other fields and byte content stay as
 in the raw file. results/submission/REDACTION.md lists every replacement:
@@ -47,9 +47,9 @@ def sha256(p: Path) -> str:
 
 
 def main() -> int:
-    files = sorted(RAW.glob("*.jsonl"))
+    files = sorted(f for ext in ("*.jsonl", "*.csv", "*.txt") for f in RAW.glob(ext))
     if not files:
-        print("No results/raw/*.jsonl files.")
+        print("No raw files.")
         return 1
     OUT.mkdir(parents=True, exist_ok=True)
     report = []
@@ -65,10 +65,13 @@ def main() -> int:
                 found = ORG_RE.findall(line)
                 if found:
                     distinct.update(found)
-                    rec = json.loads(line)
-                    rid = rec.get("request_id") or rec.get("type")
-                    for path, count in paths_containing(rec):
-                        hits.append((n, rid, path, count))
+                    if src.suffix == ".jsonl":
+                        rec = json.loads(line)
+                        rid = rec.get("request_id") or rec.get("type")
+                        for path, count in paths_containing(rec):
+                            hits.append((n, rid, path, count))
+                    else:
+                        hits.append((n, "-", "(text line)", len(found)))
                     total += len(found)
                     line = ORG_RE.sub(REPLACEMENT, line)
                 out_lines.append(line)
