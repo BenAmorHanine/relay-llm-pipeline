@@ -139,6 +139,18 @@ class TestPipeline(Base):
         self.assertEqual(self.client.calls[1]["max_tokens"], 500)
         self.assertEqual(self.client.calls[1]["reasoning_effort"], "low")
 
+    async def test_baseline_config_uses_the_old_prompt_and_max_tokens(self):
+        """run_eval.py --baseline: the pre-2026-11-18 draft prompt (rules 1-4, 5 sentences) and max_tokens 400."""
+        from relay.pipeline import DRAFT_SYSTEM, DRAFT_SYSTEM_BEFORE_COVER
+        self.assertNotIn("6. If the question asks about several papers", DRAFT_SYSTEM_BEFORE_COVER)
+        self.assertTrue(DRAFT_SYSTEM_BEFORE_COVER.endswith("5. Be brief: at most 5 sentences."))
+        self.assertTrue(DRAFT_SYSTEM.startswith(DRAFT_SYSTEM_BEFORE_COVER.split("5. Be brief")[0]))
+        p = self.make({M20: [FakeReply(ROUTE_OK)], M120: [FakeReply(GOOD)]},
+                      draft_max_tokens=400, draft_system=DRAFT_SYSTEM_BEFORE_COVER)
+        await p.answer("How many attention heads does the base Transformer use?", "t-base", "test")
+        self.assertEqual(self.client.calls[1]["max_tokens"], 400)
+        self.assertEqual(self.client.calls[1]["messages"][0]["content"], DRAFT_SYSTEM_BEFORE_COVER)
+
     async def test_router_max_tokens_200_and_keywords_only_logged(self):
         p = self.make({M20: [FakeReply(ROUTE_OK)], M120: [FakeReply(GOOD)]})
         q = "How many attention heads does the base Transformer use?"
@@ -442,7 +454,8 @@ class TestRealFailures(unittest.TestCase):
     def setUpClass(cls):
         import yaml
         from relay.pipeline import BM25Tool
-        cls.qs = {q["id"]: q for q in yaml.safe_load((ROOT / "eval" / "questions.yaml").read_text(encoding="utf-8"))}
+        cls.qs = {q["id"]: q for f in ("questions.yaml", "heldout.yaml")
+                  for q in yaml.safe_load((ROOT / "eval" / f).read_text(encoding="utf-8"))}
         cls.tool = BM25Tool("medium")
 
     def hits(self, qid):
@@ -508,6 +521,24 @@ class TestRealFailures(unittest.TestCase):
         self.assertEqual(number_values("eight heads, k_{t‑1}"), {"8", "1"})
         hits = self.hits("q14")
         self.assertFalse(check_answer("H‑Net is about 4.6× more data‑efficient [3].", hits).ok)
+
+    def test_day3_arxiv_id_false_failures_now_pass(self):
+        from relay.pipeline import normalize_citations
+        fx = json.loads((ROOT / "tests" / "fixtures" / "day3_false_check_failures.json").read_text(encoding="utf-8"))
+        self.assertEqual(len(fx["drafts"]), 7)
+        for d in fx["drafts"]:
+            with self.subTest(qid=d["qid"], step=d["step"]):
+                hits = self.tool.search(self.qs[d["qid"]]["question"])
+                r = check_answer(normalize_citations(d["text"]), hits, d["finish_reason"])
+                self.assertTrue(r.ok, r.errors)
+
+    def test_day3_arxiv_ids_do_not_hide_wrong_numbers(self):
+        hits = self.hits("q02")
+        ok = "Paper 1706.03762v7 trained the base models for 100,000 steps, about 12 hours [1]."
+        self.assertTrue(check_answer(ok, hits).ok, check_answer(ok, hits).errors)
+        self.assertFalse(check_answer(ok.replace("100,000", "200,000"), hits).ok)
+        self.assertTrue(check_answer("**Paper 1706.03762v7 (Transformer)** –\n\n" + ok, hits).ok)  # heading, no claim
+        self.assertFalse(check_answer("Paper 1706.03762v7 used 16 heads.", hits).ok)  # a number, no citation
 
     def test_day1_patterns_still_fail_on_wrong_numbers(self):
         hits = self.hits("q02")
@@ -609,6 +640,13 @@ class TestPaperCover(unittest.TestCase):
         hits = self.tool.search("Does Moshi use the label smoothing of the original Transformer?")
         self.assertIn("2410.00037v1", {h.chunk.paper_id for h in hits})
         self.assertIn("1706.03762v7", {h.chunk.paper_id for h in hits})
+
+    def test_baseline_tool_is_plain_top_k(self):
+        from relay.pipeline import BM25Tool
+        base = BM25Tool("medium", cover=False)
+        q = "Where does each of the three papers put normalization layers, and of what kind?"
+        self.assertEqual(self.ids(base.search(q)), self.ids(self.plain.search(q)))
+        self.assertGreater(len(self.tool.search(q)), len(base.search(q)))
 
 
 if __name__ == "__main__":

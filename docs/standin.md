@@ -33,7 +33,7 @@ The same 26 questions and retrieval setting, run against the real service and ag
 
 - Runs: real `run_eval_small_20261117T103158Z`, `run_eval_medium_20261117T102821Z` and `run_eval_large_20261118T091718Z`. Stand-in, v1: `run_eval_standin_medium_20261117T104108Z` and `run_eval_standin_small_20261117T104539Z`. Stand-in, v2: `run_eval_standin_small_20261117T105108Z` and `run_eval_standin_large_20261118T092938Z`.
 - **The real service drifts as much as the stand-in errs.** On 2026-11-18 the real router and draft medians were 1.4–1.6× slower than on 2026-11-17, the day v2 was calibrated on. So on the same calls v2 is 1.18× too slow on one day and 0.71× too fast on the next. Read stand-in latencies as ±40%.
-- v1 made every load-test latency 1.6–1.9× too pessimistic. The load campaign was re-run on v2; the v1 campaign is listed in `results/excluded_runs.csv`.
+- v1 made every load-test latency 1.6–1.9× too pessimistic. The load campaign was re-run on v2; the v1 campaign is listed in `results/excluded_runs.csv`. On 2026-11-19 it was re-run again, still on v2, for the final pipeline configuration (docs/report.md section 5); the 2026-11-17 v2 campaign is excluded with that reason.
 - **Remaining gaps:** on the small run the stand-in's p90 was heavier (router 1,425 vs 822 ms); on the large run, lighter (721 vs 1,220 ms). The stand-in never needs a redraft. The small comparison's end-to-end p90 (12.7 s vs 20.1 s real) mostly reflects the unpaced real run's 429 waits.
 
 ## Where it is least like the real service

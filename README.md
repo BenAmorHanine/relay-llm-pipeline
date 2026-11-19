@@ -59,6 +59,14 @@ rem repeat for --setting small and --setting large
 rem held-out questions q27-q39 (eval\heldout.yaml, frozen; never used for tuning):
 .venv\Scripts\python.exe scripts\run_eval.py --setting medium --heldout
 .venv\Scripts\python.exe scripts\run_eval.py --setting medium --heldout --go
+rem the system as it was before the paper-cover and draft-rule changes, for the held-out comparison:
+.venv\Scripts\python.exe scripts\run_eval.py --setting medium --heldout --baseline --go
+```
+
+Check replay (no model calls): every recorded real draft through the check's old and current label rules.
+
+```bat
+.venv\Scripts\python.exe scripts\replay_checks.py
 ```
 
 Grade corrections never edit a grades file: they go in an append-only `results\raw\regrades_<UTC>.csv` (request_id, previous_grade, answer_grade, grade_from, reason), which `build_results.py` applies after the original grades. A blind second grader's grades (`results\raw\second_grades_<UTC>.csv`) are compared with the first grades in `docs\tables.md`.

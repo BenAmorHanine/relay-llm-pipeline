@@ -40,7 +40,7 @@ from typing import Any, Callable, Protocol, Sequence
 from .chunking import ChunkConfig, build_chunks, load_blocks
 from .model_client import DAILY, M120, M20, CallRecord, ModelClient, utc_iso
 from .recording import ResultsWriter, TraceWriter
-from .retrieval import BM25Retriever, Hit, PaperCover
+from .retrieval import BM25Retriever, Hit, PaperCover, RetrievalPipeline
 from decimal import Decimal
 
 from .textnorm import match_norm, number_values
@@ -135,6 +135,10 @@ DRAFT_SYSTEM = (
     "9. Be brief: at most 6 sentences."
 )
 
+# The draft prompt used until 2026-11-18 (before rules 5-8). Kept only so the held-out set can be run on the
+# system as it was before the paper-cover and draft-rule changes (run_eval.py --baseline); never the default.
+DRAFT_SYSTEM_BEFORE_COVER = DRAFT_SYSTEM.split("5. Each passage")[0] + "5. Be brief: at most 5 sentences."
+
 
 # ---------------------------------------------------------------- the tool ---
 
@@ -151,13 +155,15 @@ class BM25Tool:
 
     name = "bm25"
 
-    def __init__(self, setting: str = "medium", papers_dir: Path = CLEAN_DIR):
+    def __init__(self, setting: str = "medium", papers_dir: Path = CLEAN_DIR, cover: bool = True):
+        """cover=False: plain top-k, as before 2026-11-18 (only for the baseline run, run_eval.py --baseline)."""
         size, overlap, k = RETRIEVAL_SETTINGS[setting]
         cfg = ChunkConfig(size, overlap, section_aware=True)
         chunks = [c for p in PAPERS for c in build_chunks(load_blocks(Path(papers_dir) / f"{p}.jsonl"), cfg)]
-        self.setting, self.k, self.n_chunks = setting, k, len(chunks)
-        self._pipe = PaperCover(BM25Retriever(chunks), k=k, papers=PAPERS, named=PAPER_TERMS,
-                                ask_all=ASKS_ALL_PAPERS, ratio=0.7)
+        self.setting, self.k, self.n_chunks, self.cover = setting, k, len(chunks), cover
+        self._pipe = (PaperCover(BM25Retriever(chunks), k=k, papers=PAPERS, named=PAPER_TERMS,
+                                 ask_all=ASKS_ALL_PAPERS, ratio=0.7) if cover
+                      else RetrievalPipeline(BM25Retriever(chunks), final_k=k))
 
     def search(self, query: str) -> list[Hit]:
         return self._pipe.search(query)
@@ -190,16 +196,17 @@ def format_passages(hits: Sequence[Hit]) -> str:
     return "\n\n".join(f"[{i}] {h.chunk.citation()}\n{h.chunk.text}" for i, h in enumerate(hits, 1))
 
 
-def draft_messages(question: str, hits: Sequence[Hit]) -> list[dict]:
-    return [{"role": "system", "content": DRAFT_SYSTEM},
+def draft_messages(question: str, hits: Sequence[Hit], system: str = DRAFT_SYSTEM) -> list[dict]:
+    return [{"role": "system", "content": system},
             {"role": "user", "content": f"Passages:\n\n{format_passages(hits)}\n\nQuestion: {question}"}]
 
 
-def redraft_messages(question: str, hits: Sequence[Hit], draft: str, errors: Sequence[str]) -> list[dict]:
+def redraft_messages(question: str, hits: Sequence[Hit], draft: str, errors: Sequence[str],
+                     system: str = DRAFT_SYSTEM) -> list[dict]:
     feedback = ("Your answer failed the citation check:\n" + "\n".join(f"- {e}" for e in errors) +
                 "\nWrite the answer again, following the rules. Leave out anything you cannot support with a "
                 f"passage; if nothing is supported, reply with exactly: {REFUSAL}")
-    return draft_messages(question, hits) + [{"role": "assistant", "content": draft},
+    return draft_messages(question, hits, system) + [{"role": "assistant", "content": draft},
                                              {"role": "user", "content": feedback}]
 
 
@@ -208,8 +215,11 @@ def redraft_messages(question: str, hits: Sequence[Hit], draft: str, errors: Seq
 # [n] or [n, m]; not maths: a group containing 0 (passages start at 1) or followed by ^ _ { is an interval
 # such as "p ∈ [0,1]^{L_s}" (real draft, q22 day 1), not a citation
 _CITE = re.compile(r"\[(?![^\]]*\b0\b)(\d+(?:\s*,\s*\d+)*)\](?![\^_{])")
-# "Paper 1", "passage 3": labels, not facts from the passages
-_LABEL_NUM = re.compile(r"\b(?:paper|passage)s?\s+\d+\b", re.I)
+# "Paper 1", "passage 3": labels, not facts from the passages. So are arXiv ids ("Paper 2410.00037v1"), which
+# draft rule 5 asks for (real drafts, 2026-11-19); the id alternative comes first so "Paper 1706" is not cut out
+# of "Paper 1706.03762v7" leaving ".03762" behind.
+_LABEL_NUM = re.compile(r"\b(?:(?:paper|arxiv)\s*:?\s*)?\d{4}\.\d{4,5}(?:v\d+)?\b|\b(?:paper|passage)s?\s+\d+\b",
+                        re.I)
 _LEADING_CITES = re.compile(r"^((?:\[\d+(?:\s*,\s*\d+)*\]\s*)+)(.*)$", re.S)
 
 
@@ -352,6 +362,7 @@ class PipelineConfig:
     draft_model: str = M120
     draft_max_tokens: int = 500          # 400 until 2026-11-18 (real drafts max 366/400); +100 for the multi-paper rules 6-8
     draft_effort: str = "low"
+    draft_system: str = DRAFT_SYSTEM     # DRAFT_SYSTEM_BEFORE_COVER only for the baseline run
     retrieval_timeout_s: float = 2.0
     call_timeout_s: float = 60.0
     stream_delay_s: float = 0.0          # pause between streamed words (0: as fast as the sink takes them)
@@ -479,7 +490,7 @@ class Pipeline:
                                              for i, h in enumerate(hits, 1)])
 
                 # c) draft
-                call = await model_step("draft", self.cfg.draft_model, draft_messages(question, hits),
+                call = await model_step("draft", self.cfg.draft_model, draft_messages(question, hits, self.cfg.draft_system),
                                         self.cfg.draft_max_tokens, self.cfg.draft_effort)
                 if not call.ok:
                     outcome = call_failure_outcome(call)
@@ -493,7 +504,7 @@ class Pipeline:
                 trace("check", ts, self.clock(), **asdict(chk))
                 if not chk.ok:
                     call = await model_step("redraft", self.cfg.draft_model,
-                                            redraft_messages(question, hits, call.text, chk.errors),
+                                            redraft_messages(question, hits, call.text, chk.errors, self.cfg.draft_system),
                                             self.cfg.draft_max_tokens, self.cfg.draft_effort)
                     if not call.ok:
                         await stream_to_user(failure_reply(call, hits), call_failure_outcome(call))

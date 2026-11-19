@@ -1,0 +1,114 @@
+﻿qid,question,answer,citations,suggested_grade,reason,final_grade
+q01,"How many attention heads does the base Transformer use, and what is the dimension of each head's keys and values?",The three papers do not answer this question.,,refused_wrongly,answerable but refused (refused),
+q02,"How long were the base and big Transformer models trained, and on what hardware?","- For the base Transformer model, training ran for a total of 100,000 steps, which corresponded to about 12 hours on a single machine equipped with 8 NVIDIA P100 GPUs[1].  
+- For the big Transformer model, training ran for 300,000 steps, taking roughly 3.5 days on the same hardware of 8 NVIDIA P100 GPUs[1][2].
+
+Sources:
+[1] [1706.03762v7, 5.2 Hardware and Schedule, p.7]
+[2] [1706.03762v7, 6.1 Machine Translation, p.8]",[1] 1706.03762v7 p.7; [2] 1706.03762v7 p.8,correct,all facts present; cites a gold paper+page,
+q03,What warmup schedule and Adam settings were used to train the Transformer?,"I could not produce an answer I can verify against the papers. These are the passages I found:
+[1] [1706.03762v7, 5.3 Optimizer, p.7] 5.3 Optimizer We used the Adam optimizer [20] with β_1 = 0.9, β_2 = 0.98 and ε = 10^-9. We varied the learning rate over the course of training, according to the formula: lrate = d_model^-0.5 · min(step_num^-0.5, step_num · warmup_steps^-1.5) (3) This corresponds to increasing the learning rate line...
+[2] [2410.00037v1, 4.4 Training stages and hyper-parameters, p.20] 4.4 Training stages and hyper-parameters Helium pre-training. An overview of the training stages and hyper parameters is provided in Table 1. For every training phase, we use AdamW (Loshchilov and Hutter, 2019), with a weight decay of 0.1, a momentum decay of 0.9, and a decay for the online average ...
+[3] [2507.07955v2, 3 Experiments, p.12] scheduling with 10% linear warmup and 20% inverse-square-root decay (Ibrahim et al. 2024). Following Hägele et al. (2024) which recommends WSD schedulers with half the maximum learning rates as a cosine schedule, we adopt learning rates 2.5× higher than GPT-3 (Radford et al. 2019) standards; this co...
+[4] [2410.00037v1, 4.4 Training stages and hyper-parameters, p.20] We mask the corresponding text tokens with a probability of 30%. We randomize the delay between the text and audio tokens between -0.6 and +0.6 seconds. In order to prevent catastrophic forgetting, we also train half of the time on batches of text only data from the same dataset as used for Helium. ...
+[5] [2410.00037v1, 3.3.1 Architecture, p.11] Optimization. Unlike purely convolutional codecs that use Adam (Kingma and Ba, 2015), the introduction of Transformers into the architecture requires additional regularization with weight decay along with using the AdamW (Loshchilov and Hutter, 2019) optimizer. More precisely, we apply weight decay ...",,refused_wrongly,answerable but refused (refused_check_failed),
+q04,"What is the frame rate and bitrate of the Mimi codec, and how many quantizers does it use?","- For the Mimi codec the frame (codec) rate is 12.5 Hz, which yields a bitrate of about 1.1 kbps [2].  
+- The codec uses Q = 8 quantizers, each with a codebook size of N_A = 2048 [2].
+
+Sources:
+[2] [2410.00037v1, 3.3.1 Architecture, p.11]",[2] 2410.00037v1 p.11,correct,all facts present; cites a gold paper+page,
+q05,"What latency does Moshi achieve, and what design choice sets it?","Moshi achieves a theoretical latency of 160 ms[3]. This latency is set by the design choice of using an acoustic delay of 2 during pre‑training and an acoustic delay of 1 during fine‑tuning, which together determine the 160 ms latency[4].
+
+Sources:
+[3] [2410.00037v1, 1 Introduction, p.2]
+[4] [2410.00037v1, 5.3 Ablations on generative modeling, p.26]",[3] 2410.00037v1 p.2; [4] 2410.00037v1 p.26,wrong,missing facts ['200ms'],
+q06,"In Moshi's Inner Monologue text stream, what share of the tokens are padding?",The three papers do not answer this question.,,refused_wrongly,answerable but refused (refused),
+q07,"What weight is given to the ratio loss in H-Net, and what does that loss control?","In the H‑Net experiments the ratio‑loss term is weighted by α = 0.03 [1].  
+The ratio loss is introduced to steer the model toward a target compression ratio, i.e., to control how many vectors are retained versus discarded so that the model achieves the desired amount of down‑sampling while preserving important information [1][3].
+
+Sources:
+[1] [2507.07955v2, 2.2.3 Ratio Loss, p.8]
+[3] [2507.07955v2, 2.2.3 Ratio Loss, p.8]",[1] 2507.07955v2 p.8; [3] 2507.07955v2 p.8,correct,all facts present; cites a gold paper+page,
+q08,"How many bytes per chunk does H-Net's dynamic chunking end up with, compared with SpaceByte's spacelike heuristic?","H‑Net’s dynamic chunking compresses the data to about 4.5–5 bytes per chunk [2].  
+SpaceByte’s spacelike‑delimiter heuristic averages 6.0 bytes per chunk [1].
+
+Sources:
+[1] [2507.07955v2, 3 Experiments, p.10]
+[2] [2507.07955v2, 1 Introduction, pp.3-4]",[1] 2507.07955v2 p.10; [2] 2507.07955v2 p.3-4,correct,all facts present; cites a gold paper+page,
+q09,After how many training bytes does the 2-stage H-Net overtake the tokenized Transformer at XL scale?,"The 2‑stage H‑Net overtakes the tokenized Transformer after about 30 billion training bytes[1][2].
+
+Sources:
+[1] [2507.07955v2, 3.1 Language Modeling, p.12]
+[2] [2507.07955v2, 1 Introduction, p.4]",[1] 2507.07955v2 p.12; [2] 2507.07955v2 p.4,wrong,missing facts ['200B'] | review (2026-11-19): 30B bytes is the 2-stage crossover asked about; same as day-1/day-2 q09,correct
+q10,What was the training cost in FLOPs of the base Transformer on English-German?,"The base Transformer required 3.3 × 10¹⁸ FLOPs for English‑German training [1][3].
+
+Sources:
+[1] [1706.03762v7, 6.1 Machine Translation, p.8]
+[3] [1706.03762v7, 6.1 Machine Translation, p.8]",[1] 1706.03762v7 p.8; [3] 1706.03762v7 p.8,correct,all facts present; cites a gold paper+page,
+q11,What peak learning rates were used for the Large and XL H-Net experiments?,"The Large‑scale H‑Net experiments used a peak learning rate of 6.25 × 10⁻⁴, while the XL‑scale H‑Net experiments used a peak learning rate of 5.0 × 10⁻⁴ [3].
+
+Sources:
+[3] [2507.07955v2, 3 Experiments, p.12]",[3] 2507.07955v2 p.12,correct,all facts present; cites a gold paper+page,
+q12,How much does Inner Monologue change Moshi's spoken question-answering accuracy?,"Moshi’s spoken question‑answering accuracy increases dramatically when Inner Monologue is added [2].  
+With Inner Monologue, Moshi achieves 26.6 on Web Questions, compared with 9.2 without Inner Monologue [3].  
+On LlaMA‑Questions, Moshi scores 62.3 with Inner Monologue versus 21.0 without it [3].  
+On Audio Trivia‑QA, Moshi reaches 22.8 with Inner Monologue, while the version without it obtains 7.3 [3].
+
+Sources:
+[2] [2410.00037v1, 5.5 Spoken question answering, p.29]
+[3] [2410.00037v1, 5.5 Spoken question answering, p.29]",[2] 2410.00037v1 p.29; [3] 2410.00037v1 p.29,wrong,"missing facts ['tripling'] | review (2026-11-19): all three before/after scores (each about 3x); the question asks how much it changes, the scores answer it; same rule as day-2 q12",correct
+q13,What BLEU score did the big Transformer reach on WMT 2014 English-to-French?,"The big Transformer achieved a BLEU score of 41.0 on the WMT 2014 English‑to‑French task according to the detailed results discussion [1]. The abstract and the summary table report a BLEU score of 41.8 for the same big model on the same task [2][3]. These two values differ [1][2][3].
+
+Sources:
+[1] [1706.03762v7, 6.1 Machine Translation, p.8]
+[2] [1706.03762v7, Abstract, p.1]
+[3] [1706.03762v7, 6.1 Machine Translation, p.8]",[1] 1706.03762v7 p.8; [2] 1706.03762v7 p.1; [3] 1706.03762v7 p.8,correct,all facts present; cites a gold paper+page,
+q14,How much more data-efficient is H-Net than isotropic models on DNA?,"H‑Net is about 3.6 times more data‑efficient than isotropic models on DNA [2][3].
+
+Sources:
+[2] [2507.07955v2, 1 Introduction, p.4]
+[3] [2507.07955v2, 3.2 Alternate Language Datasets, p.17]",[2] 2507.07955v2 p.4; [3] 2507.07955v2 p.17,wrong,missing facts ['nearly 4'],
+q15,Why does the Transformer divide the attention dot products by the square root of d_k?,"The Transformer scales the dot products by 1/√d_k to keep their magnitude from becoming too large when the key dimension d_k is large, which would push the softmax into regions with extremely small gradients[2]. By dividing each dot product by √d_k the attention weights remain well‑behaved and the model can be trained effectively[1].
+
+Sources:
+[1] [1706.03762v7, 3.2.1 Scaled Dot-Product Attention, p.4]
+[2] [1706.03762v7, 3.2.1 Scaled Dot-Product Attention, p.4]",[1] 1706.03762v7 p.4; [2] 1706.03762v7 p.4,wrong,"missing facts ['grow large in magnitude', 'variance d'] | review (2026-11-19): large magnitude for big d_k pushes softmax into tiny gradients; same as day-1/day-2 q15",correct
+q16,Why does Mimi use a split RVQ instead of a single RVQ with 8 levels?,"I could not produce an answer I can verify against the papers. These are the passages I found:
+[1] [2410.00037v1, 3.3.2 Learning semantic-acoustic tokens with a split RVQ, p.12] We then compute a cosine distance between the output of the first quantizer and the transformed WavLM embeddings, to perform distillation. Table 3 shows that this distillation loss conflicts with reconstruction and adversarial losses targeting quality. Indeed, while distillation significantly improv...
+[2] [2410.00037v1, 3.3.2 Learning semantic-acoustic tokens with a split RVQ, pp.11-12] 3.3.2 Learning semantic-acoustic tokens with a split RVQ Similarly to SpeechTokenizer (Zhang et al., 2024b), we distill semantic information from a self-supervised model (WavLM^8 (Chen et al., 2022) in our case) into the first level of the RVQ. WavLM projects a 16kHz waveform into 1024-dimensional e...
+[3] [2410.00037v1, 5.3 Ablations on generative modeling, p.26] Results - RQ-Transformer. Table 5 reports results for ablations on the use of an RQ- Transformer. We first replicate the setting of Copet et al. (2023) with the delay pattern of [0, 1, 2, 3, 4, 5, 6, 7], which means that each level of RVQ token is generated one timestep after the preceding level. In...
+[4] [2410.00037v1, 5.2 Audio Tokenization, p.24] Results - Semantic tokens. Table 3 shows that Mimi’s phonetic discriminability of semantic tokens, as measured by ABX, is poor in the absence of distillation and comparable to acoustic tokens of previous work (Borsos et al., 2022): This means these semantic tokens are not amenable to capturing lingu...
+[5] [2410.00037v1, 3.3.2 Learning semantic-acoustic tokens with a split RVQ, p.10] Figure 2: Architecture and training of Mimi, our neural audio codec, with its split residual vector quantization. During training (blue part, top), we distill non-causal embeddings from WavLM (Chen et al., 2022) into a single vector quantizer which produces semantic tokens, and is combined with sepa...",,refused_wrongly,answerable but refused (refused_check_failed),
+q17,How does H-Net's routing module decide where a chunk boundary goes?,"In H‑Net, the routing module determines chunk boundaries by measuring the cosine similarity between adjacent encoder outputs: it computes a boundary probability pₜ = ½ [1 − (qₜᵀ kₜ₋₁)/(‖qₜ‖‖kₜ₋₁‖)] and sets a boundary indicator bₜ when pₜ ≥ 0.5 [2]. This implements the intuition that meaningful boundaries tend to appear where the contextual or semantic content changes, i.e., where adjacent vectors become less similar [2].
+
+Sources:
+[2] [2507.07955v2, 2.2.1 Chunking Layer, p.6]",[2] 2507.07955v2 p.6,wrong,"missing facts ['semantic shift'] | review (2026-11-19): cosine similarity of adjacent outputs, p_t = 1/2(1 - cos), boundary at p_t >= 0.5, boundaries where content changes",correct
+q18,"Where does each of the three papers put normalization layers, and of what kind?","I could not produce an answer I can verify against the papers. These are the passages I found:
+[1] [2507.07955v2, 2.3 Improved Techniques for Hierarchical Sequence Modeling, p.9] This addition of a normalization layer addresses a critical challenge in hierarchical architectures. Pre-normalization allows residual stream magnitudes to grow unbounded through successive layers, with feature norms increasing monotonically. For H-Net, this poses a particular problem: the architect...
+[2] [2507.07955v2, 2.3 Improved Techniques for Hierarchical Sequence Modeling, p.8] 2.3 Improved Techniques for Hierarchical Sequence Modeling We introduce several techniques that improve the overall architecture. These may generally be considered techniques to improve signal propagation throughout the network, improving stability and learnability. Norm Balance. Modern large langua...
+[3] [1706.03762v7, 3.1 Encoder and Decoder Stacks, p.3] Decoder: The decoder is also composed of a stack of N = 6 identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections...
+[4] [1706.03762v7, 3.1 Encoder and Decoder Stacks, p.3] 3.1 Encoder and Decoder Stacks Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position-wise fully connected feed-forward network. We employ a residual connection [11...
+[5] [2507.07955v2, 2.1.2 Design Principles, p.6] • Second, using efficient and powerful SSM layers in the outer networks allow reducing the number of layers used compared to similar prior architectures that only used Transformer layers (Slagle 2024); in this paper, we always stick to four layers (or the equivalent of four Mamba layers) in each enc...
+[6] [2410.00037v1, 3.2.1 Architecture, p.7] 3.2.1 Architecture Helium is an autoregressive language model, based on the Transformer architecture (Vaswani et al., 2017). Following previous work in this area, we make the following changes to the original architecture: First, we use RMS normalization (Zhang and Sennrich, 2019) at the input of th...",,refused_wrongly,answerable but refused (refused_check_failed),
+q19,"Moshi and H-Net both build on the Transformer. Which parts of each system are Transformers, and which are not?","I could not produce an answer I can verify against the papers. These are the passages I found:
+[1] [2410.00037v1, 3.1 Overview, pp.6-7] 3.1 Overview Moshi is a multi-stream speech-to-speech Transformer model, which allows for full-duplex spoken dialogue with a user thanks to an innovative architecture summarized in Figure 1. Moshi is built on top of Helium, a text LLM which we build from scratch (Section 3.2), relying on high-qualit...
+[2] [2507.07955v2, 3.2 Alternate Language Datasets, pp.15-16] • DNA does not have any natural tokenization cues and instead must be processed as raw base pairs. Figure 5: Validation Bits-per-byte (BPB) throughout training on Chinese language and code modeling. H-Net (space) and H-Net (2-stage) are byte-level, while the Transformers use the Llama-3 tokenizer wh...
+[3] [2410.00037v1, 2 Related Work, p.6] been proposed by Wang et al. (2024), with an ASR system running in parallel to a text generator that feeds into a streaming TTS. While this allows modeling more complex scenarios than previous approaches, it still relies on a cascaded pipeline and models both the user’s and the system’s speech into ...
+[4] [2507.07955v2, 2.1.2 Design Principles, p.5] Based on these insights, we employ Mamba-2 layers (Dao and Gu 2024) as the primary building blocks for the encoder and decoder networks. This choice yields two significant benefits: effective handling of fine-grained inputs, and substantially improved efficiency when processing long, uncompressed se...
+[5] [2507.07955v2, 3.3 Ablation Studies, p.20] Comparison to Mixture-of-Experts. H-Net can be viewed as a form of dynamic sparsity similar to Mixture-of-Experts (MoEs), in that they are able to improve performance by using more parameters, all while keeping the total FLOPs budget constant. We were interested in understanding whether or not its p...
+[6] [1706.03762v7, Abstract, p.1] ^∗Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started the effort to evaluate this idea. Ashish, with Illia, designed and implemented the first Transformer models and has been crucially involved in every aspect of this work. Noam proposed scaled ...",,refused_wrongly,answerable but refused (refused_check_failed),
+q20,"Which of the three papers removes the tokenizer entirely, and do the other two still rely on one?",The three papers do not answer this question.,,refused_wrongly,answerable but refused (refused),
+q21,"What is smoothing used for, and what value is it set to?","Smoothing is introduced to transform discrete chunking operations so that gradient flow is possible during back‑propagation, addressing the difficulty posed by discrete chunk boundaries [7].  
+The passages do not provide a specific numerical value to which the smoothing module is set.
+
+Sources:
+[7] [2507.07955v2, 2.2.2 Dechunking, p.6]",[7] 2507.07955v2 p.6,wrong,missing facts ['ls = 0.1']; no citation on a gold paper+page,
+q22,How does the model decide where to split its input into chunks?,"The chunking layer contains a routing module that produces a confidence score p^s for each token, where p^s ∈[0,1] represents the router’s belief that the token should be passed into the main stage [2].  These confidence scores are used as boundary indicators: tokens with high p^s are kept as chunk boundaries, while tokens with lower p^s are merged into larger chunks [3].  The model therefore decides where to split its input by evaluating p^s for each position and drawing chunk boundaries where the confidence is sufficiently high.
+
+Sources:
+[2] [2507.07955v2, 2.1.1 Components of H-Net, p.5]
+[3] [2507.07955v2, 1 Introduction, pp.2-3]",[2] 2507.07955v2 p.5; [3] 2507.07955v2 p.2-3,wrong,"missing facts ['80ms', 'byte-pair']; no citation on a gold paper+page",
+q23,What BLEU score does the Transformer achieve on English-to-Japanese translation?,The three papers do not answer this question.,,refused_correctly,unanswerable and refused (refused),
+q24,How does a 3-stage H-Net compare with the 2-stage model?,The three papers do not answer this question.,,refused_correctly,unanswerable and refused (refused),
+q25,What word error rate does Moshi's streaming ASR reach on French speech?,The three papers do not answer this question.,,refused_correctly,unanswerable and refused (refused),
+q26,"What does SoundStorm do, according to these papers?","That question is outside what I can answer: I only answer from three papers (Attention Is All You Need, Moshi, H-Net).",,refused_correctly,unanswerable and refused (refused_out_of_scope),

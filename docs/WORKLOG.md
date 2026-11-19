@@ -802,3 +802,22 @@ Partial run stopped after 11 questions: over-strict check refused correct answer
 - What I checked and how:
 - What was wrong / what I caught:
 - Decision I made:
+
+## 2026-11-19 – Step 14 – Real re-run with a held-out baseline, verdict, check fix, replay
+- Prompt (verbatim):
+  ```text
+  go on
+  ```
+  Then: "Paired, 1 rep (Recommended)" (run plan), "yes" (go for the 3 real runs), "Fix + replay, no new calls (Recommended)".
+- What was done:
+  - Found a gap in the plan: the held-out questions had never run on the system before the changes, so "both sets improve" had nothing to compare with. Added `run_eval.py --baseline` (old retrieval, old prompt, `max_tokens` 400; scenario `eval_heldout_baseline`); the old prompt is byte-identical to commit 42e6f5e. make_tables labels runs by system version; 2 new tests.
+  - Three real runs, paced, zero 429s: final system on q01–q26, final on held-out, baseline on held-out. 120b 97.9K real tokens, 20b 25.3K.
+  - Graded: rubric, then review with the day-2 rules (7 changes), then a blind second grader that saw neither the first grades nor which run an answer came from: 52/52 agreement.
+  - **Verdict (rule fixed before the runs): no accuracy gain.** q01–q26 10 → 11 correct (p = 1.0), held-out 4 vs 4 (p = 1.0). Wrong answers 12 → 7 over both sets, wrong refusals 7 → 11.
+  - Cause of most extra refusals: rule 5 makes drafts write arXiv ids, and the check read them as numbers. Fixed (ids are labels), frozen with the 7 drafts; replay of all 183 recorded checks: 7 fail → pass, 0 pass → fail (`scripts/replay_checks.py`).
+  - Replay, graded and blind-graded (4/4 agreement): q01–q26 would be 13/26 (p = 0.375 against day 2), held-out still 4 vs 4. Kept outside results.csv (`results/raw/replay_grades_20261119T090000Z.csv`).
+  - Final configuration: changes kept, with the check fix. Stand-in load campaign re-run on it; the v2 campaign is excluded.
+  - Report, tables, DECISIONS, README updated; 55 tests pass.
+- What I checked and how:
+- What was wrong / what I caught:
+- Decision I made:

@@ -8,7 +8,8 @@ Dry run by default: prints requests and reserved tokens per model, makes NO call
 A --go run writes (append-only):
     results/raw/run_eval_<setting>_<UTC>.csv      one results row per question (scenario "eval")
     results/raw/traces_eval_<setting>_<UTC>.jsonl per-step traces (answers, citations, timings)
-request_id = eval-<setting>-<UTC>-<qid>, so scripts/pregrade.py can match rows, traces and questions.
+--heldout adds _heldout and --baseline adds _baseline to the scenario (eval_heldout_baseline).
+request_id = eval-<setting>-<UTC>-<qid> (eval-heldout-baseline-<setting>-... etc.), so scripts/pregrade.py can match rows, traces and questions.
 
 Safety: the run stops early if 3 requests in a row end with status rate_limited or error
 (the budget is shared; better to stop and look than to burn it).
@@ -29,8 +30,8 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 from relay.chunking import count_tokens  # noqa: E402
-from relay.pipeline import (RETRIEVAL_SETTINGS, BM25Tool, Pipeline, PipelineConfig, draft_messages,  # noqa: E402
-                            redraft_messages, router_messages)
+from relay.pipeline import (DRAFT_SYSTEM_BEFORE_COVER, RETRIEVAL_SETTINGS, BM25Tool, Pipeline,  # noqa: E402
+                            PipelineConfig, draft_messages, redraft_messages, router_messages)
 from relay.recording import ResultsWriter, TraceWriter  # noqa: E402
 
 RAW = ROOT / "results" / "raw"
@@ -59,13 +60,14 @@ def dry_run(questions: list[dict], tool: BM25Tool, cfg: PipelineConfig) -> None:
     d_in, rd_in = [], []
     for q in questions:
         hits = tool.search(q["question"])
-        d_in.append(ptok(draft_messages(q["question"], hits)))
-        rd_in.append(ptok(redraft_messages(q["question"], hits, "", [])) + cfg.draft_max_tokens + FEEDBACK_TOKENS)
+        d_in.append(ptok(draft_messages(q["question"], hits, cfg.draft_system)))
+        rd_in.append(ptok(redraft_messages(q["question"], hits, "", [], cfg.draft_system)) + cfg.draft_max_tokens + FEEDBACK_TOKENS)
     n = len(questions)
     r_res = sum(r_in) + n * cfg.router_max_tokens
     d_res = sum(d_in) + n * cfg.draft_max_tokens
     rd_res = sum(rd_in) + n * cfg.draft_max_tokens
-    print(f"DRY RUN (no API calls). setting={tool.setting} ({tool.n_chunks} chunks, k={tool.k}), "
+    print(f"DRY RUN (no API calls). setting={tool.setting} ({tool.n_chunks} chunks, k={tool.k}"
+          f"{', paper cover' if tool.cover else ', NO paper cover (baseline)'}), "
           f"{n} question(s): {', '.join(q['id'] for q in questions)}")
     print(f"router {cfg.router_model} max_tokens={cfg.router_max_tokens}; "
           f"draft {cfg.draft_model} max_tokens={cfg.draft_max_tokens}, effort {cfg.draft_effort}\n")
@@ -83,10 +85,10 @@ def dry_run(questions: list[dict], tool: BM25Tool, cfg: PipelineConfig) -> None:
 
 
 async def go(questions: list[dict], tool: BM25Tool, cfg: PipelineConfig, standin: bool = False,
-             pace: bool = True, heldout: bool = False) -> int:
+             pace: bool = True, heldout: bool = False, baseline: bool = False) -> int:
     from relay.model_client import GroqClient
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    scenario = ("eval_heldout" if heldout else "eval") + ("_standin" if standin else "")
+    scenario = ("eval_heldout" if heldout else "eval") + ("_baseline" if baseline else "") + ("_standin" if standin else "")
     run_csv = RAW / f"run_{scenario}_{tool.setting}_{stamp}.csv"
     traces = RAW / f"traces_{scenario}_{tool.setting}_{stamp}.jsonl"
     server = None
@@ -107,7 +109,7 @@ async def go(questions: list[dict], tool: BM25Tool, cfg: PipelineConfig, standin
         for i, q in enumerate(questions, 1):
             if pace:   # let the 120b token bucket (8,000/min) refill for this question's reservation first
                 await asyncio.sleep(max(0.0, next_start - time.perf_counter()))
-                reserve = ptok(draft_messages(q["question"], tool.search(q["question"]))) + cfg.draft_max_tokens
+                reserve = ptok(draft_messages(q["question"], tool.search(q["question"]), cfg.draft_system)) + cfg.draft_max_tokens
                 next_start = time.perf_counter() + reserve / (8000 / 60)
             res = await pipe.answer(q["question"], f"{scenario.replace('_', '-')}-{tool.setting}-{stamp}-{q['id']}", scenario)
             row = res["row"]
@@ -134,7 +136,10 @@ def main() -> int:
     ap.add_argument("--setting", choices=list(RETRIEVAL_SETTINGS), default="medium")
     ap.add_argument("--questions", help="comma-separated ids, e.g. q01,q02 (default: all)")
     ap.add_argument("--heldout", action="store_true",
-                    help="use eval/heldout.yaml (q27-q38, written after the 2026-11-18 changes; scenario eval_heldout)")
+                    help="use eval/heldout.yaml (q27-q39, written after the 2026-11-18 changes; scenario eval_heldout)")
+    ap.add_argument("--baseline", action="store_true",
+                    help="run the system as it was before the 2026-11-18 changes (no paper cover, draft rules 1-4, "
+                         "draft max_tokens 400), to compare with on the held-out set; scenario gets _baseline")
     ap.add_argument("--go", action="store_true", help="make real Groq calls (default: dry run)")
     ap.add_argument("--standin", action="store_true", help="run against the stand-in instead (no Groq calls)")
     ap.add_argument("--no-pace", action="store_true",
@@ -142,12 +147,14 @@ def main() -> int:
                          "questions, so latency is measured on an unloaded service)")
     args = ap.parse_args()
     questions = load_questions(args.questions, args.heldout)
-    tool = BM25Tool(args.setting)
-    cfg = PipelineConfig()
+    tool = BM25Tool(args.setting, cover=not args.baseline)
+    cfg = (PipelineConfig(draft_max_tokens=400, draft_system=DRAFT_SYSTEM_BEFORE_COVER) if args.baseline
+           else PipelineConfig())
     if not args.go and not args.standin:
         dry_run(questions, tool, cfg)
         return 0
-    return asyncio.run(go(questions, tool, cfg, standin=args.standin, pace=not args.no_pace, heldout=args.heldout))
+    return asyncio.run(go(questions, tool, cfg, standin=args.standin, pace=not args.no_pace, heldout=args.heldout,
+                            baseline=args.baseline))
 
 
 if __name__ == "__main__":

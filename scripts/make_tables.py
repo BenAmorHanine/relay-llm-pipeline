@@ -42,6 +42,9 @@ STAMP = re.compile(r"\d{8}T\d{6}Z")
 # Eval runs stamped at or after this were made with the check fixes and router guard of 2026-11-17
 # (made after the day-1 runs 102821Z / 103158Z, before any later eval run).
 FIXES_STAMP = "20261117T110000Z"
+# Runs from this stamp on use the paper cover and draft rules 5-8 (docs/DECISIONS.md, "Paper cover"); the last
+# run before the change is 20261118T092938Z. Scenarios ending in _baseline re-run the earlier system on purpose.
+COVER_STAMP = "20261118T100000Z"
 
 
 def pct(values: list[float], p: float):
@@ -205,7 +208,7 @@ def main() -> int:
     # before FIXES_STAMP measure the earlier system (see docs/DECISIONS.md, "check fixes" and "router guard").
     t3 = []
     for k in keys:
-        if k[0] not in ("eval", "eval_heldout"):
+        if k[0] not in ("eval", "eval_heldout", "eval_heldout_baseline"):
             continue
         for rid, gs in sorted(groups[k].items(), key=lambda kv: (kv[0] < FIXES_STAMP, kv[0]), reverse=True):
             s_ = gs[0]["retrieval_setting"]
@@ -220,9 +223,11 @@ def main() -> int:
             ft = [float(r["first_token_ms"]) for r in gs if r["first_token_ms"]]
             tt = [float(r["total_ms"]) for r in ok]
             toks = sum(int(r["tokens_in"]) + int(r["tokens_out"]) for r in gs)
-            system = "current system" if rid >= FIXES_STAMP else "before day-1 fixes"
+            system = ("before paper cover (baseline re-run)" if k[0].endswith("_baseline")
+                      else "final system" if rid >= COVER_STAMP
+                      else "day-1 fixes, before paper cover" if rid >= FIXES_STAMP else "before day-1 fixes")
             day = f"{rid[:4]}-{rid[4:6]}-{rid[6:8]}"
-            qset = "held-out q27-q38" if k[0] == "eval_heldout" else "q01-q26"
+            qset = "held-out q27-q39" if k[0].startswith("eval_heldout") else "q01-q26"
             t3.append(f"| {s_}: {size} tokens, {kk} pieces, no re-rank | {day}, {system}, {qset} ({k[1]}, {rid}) | {n} | "
                       f"{sh('correct')}" + (f" [{lo:.1f}, {hi:.1f}]" if graded else "") + f" | "
                       f"{sh('wrong')} | {sh('refused_correctly')} | {sh('refused_wrongly')} | {toks / n:,.0f} | {triple(ft, (50, 95))} | "

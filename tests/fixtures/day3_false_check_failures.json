@@ -1,0 +1,68 @@
+{
+ "note": "Verbatim drafts from the 2026-11-19 real eval (final system) that the check wrongly failed: draft rule 5 makes the model name papers by arXiv id ('Paper 1706.03762v7'), and the check read the id as unsupported numbers (1706, 3762, 37, 7955). Copied from the raw traces named in source. q03's first draft is not here: it was cut off by the token limit and still fails.",
+ "drafts": [
+  {
+   "source": "traces_eval_heldout_medium_20261119T064735Z.jsonl",
+   "request_id": "eval-heldout-medium-20261119T064735Z-q36",
+   "qid": "q36",
+   "setting": "medium",
+   "step": "draft",
+   "finish_reason": "stop",
+   "text": "- **Paper 2410.00037v1**: During the Fisher‑dataset fine‑tuning stage the batch contains 40 minutes of audio [4]; during the final instruction‑fine‑tuning stage the batch contains 2.7 hours of audio [4].  \n- **Paper 2507.07955v2**: The passages do not give any information about the training‑batch size.  \n- **Paper 1706.03762v7**: The passages do not give any information about the training‑batch size."
+  },
+  {
+   "source": "traces_eval_heldout_medium_20261119T064735Z.jsonl",
+   "request_id": "eval-heldout-medium-20261119T064735Z-q36",
+   "qid": "q36",
+   "setting": "medium",
+   "step": "redraft",
+   "finish_reason": "stop",
+   "text": "- **Paper 2410.00037v1**: In the Fisher‑dataset fine‑tuning stage the batch size is 40 minutes of audio [4]; in the final instruction‑fine‑tuning stage the batch size is 2.7 hours of audio [4].  \n- **Paper 2507.07955v2**: The passages provide no information about training‑batch size [2].  \n- **Paper 1706.03762v7**: The passages provide no information about training‑batch size [3]."
+  },
+  {
+   "source": "traces_eval_medium_20261119T064116Z.jsonl",
+   "request_id": "eval-medium-20261119T064116Z-q03",
+   "qid": "q03",
+   "setting": "medium",
+   "step": "redraft",
+   "finish_reason": "stop",
+   "text": "Paper 1706.03762 used the Adam optimizer with β₁ = 0.9, β₂ = 0.98, ε = 10⁻⁹ and a learning‑rate schedule that linearly increases for the first 4000 warmup steps and then decays proportionally to the inverse square root of the step number [1].\n\nPaper 2410.00037 used AdamW with a weight decay of 0.1, a momentum decay of 0.9, and a decay for the online average of the squared gradient of 0.95; training employed a cosine learning‑rate schedule with a linear warmup (starting at 3 × 10⁻⁴ for Helium and at 3 × 10⁻⁵ or 2 × 10⁻⁴ for the Temporal and Depth Transformers) [2][4]."
+  },
+  {
+   "source": "traces_eval_medium_20261119T064116Z.jsonl",
+   "request_id": "eval-medium-20261119T064116Z-q18",
+   "qid": "q18",
+   "setting": "medium",
+   "step": "draft",
+   "finish_reason": "stop",
+   "text": "- **Paper 2507.07955v2 (H‑Net)** – Normalization is applied as an RMSNorm layer placed at the end of each network component (the encoder E^s, decoder D^s, and main network M) to balance processed features and residual information【2】.  \n\n- **Paper 1706.03762v7 (Transformer)** – Both encoder and decoder stacks use layer‑normalization (LayerNorm) after each sub‑layer (self‑attention and feed‑forward) and after the residual connections in every layer【3】【4】.  \n\n- **Paper 2410.00037v1 (Helium)** – The model employs RMS normalization (RMSNorm) at the input of the attention blocks, the feed‑forward blocks, and the output linear layer of the Transformer‑based architecture【6】."
+  },
+  {
+   "source": "traces_eval_medium_20261119T064116Z.jsonl",
+   "request_id": "eval-medium-20261119T064116Z-q18",
+   "qid": "q18",
+   "setting": "medium",
+   "step": "redraft",
+   "finish_reason": "stop",
+   "text": "- **Paper 2507.07955v2 (H‑Net)** places an RMSNorm layer at the end of each network component (E^s, D^s, and M) to restore balance between processed features and residual information【2】.  \n- **Paper 1706.03762v7** uses layer‑normalization after each sub‑layer and after the residual connections in both the encoder and decoder stacks【3】【4】.  \n- **Paper 2410.00037v1 (Helium)** applies RMS normalization (RMSNorm) at the input of the attention blocks, the feed‑forward blocks, and the output linear layer of its Transformer‑based architecture【6】."
+  },
+  {
+   "source": "traces_eval_medium_20261119T064116Z.jsonl",
+   "request_id": "eval-medium-20261119T064116Z-q19",
+   "qid": "q19",
+   "setting": "medium",
+   "step": "draft",
+   "finish_reason": "stop",
+   "text": "**Moshi (paper 2410.00037v1)** – The core speech‑to‑speech model is described as a “multi‑stream speech‑to‑speech **Transformer** model” [1].  The surrounding components are not Transformers: the Helium text LLM that provides the reasoning backbone is built separately, the “Inner Monologue” training/inference procedure jointly models text and audio tokens, and the “Mimi” neural audio codec that tokenises semantic and acoustic information are additional modules that sit outside the Transformer core [1].\n\n**H‑Net (paper 2507.07955v2)** – The encoder and decoder networks are built from **Mamba‑2 layers** (state‑space models), not from Transformer layers [4].  The main network that processes the compressed sequences also uses these SSM‑based components, and the paper only compares H‑Net to Transformer baselines in ablations [5]; it does not contain any Transformer modules itself."
+  },
+  {
+   "source": "traces_eval_medium_20261119T064116Z.jsonl",
+   "request_id": "eval-medium-20261119T064116Z-q19",
+   "qid": "q19",
+   "setting": "medium",
+   "step": "redraft",
+   "finish_reason": "stop",
+   "text": "Moshi (paper 2410.00037v1) – The speech‑to‑speech core is explicitly described as a “multi‑stream speech‑to‑speech **Transformer** model” [1].  The Helium text LLM, the Inner Monologue training/inference procedure that jointly models text and audio tokens, and the Mimi neural audio codec that tokenises semantic and acoustic information are additional components that are not part of the Transformer architecture [1].\n\nH‑Net (paper 2507.07955v2) – The encoder and decoder are built from **Mamba‑2 layers**, a state‑space model architecture, rather than from Transformer layers [4].  The main network that processes the progressively compressed sequences also relies on these SSM‑based components, and the paper only compares H‑Net to Transformer baselines in ablation studies, indicating that H‑Net itself does not contain Transformer modules [4]."
+  }
+ ]
+}

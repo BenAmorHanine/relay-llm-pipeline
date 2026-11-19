@@ -229,7 +229,7 @@ The pipeline changed between eval days, so pooling medium's two runs would avera
 - Medium ties on retrieval-only recall, and the whole load campaign is measured on it.
 - Switching would need a new load campaign, for a gain that cannot be told apart from noise.
 
-### Paper cover (2026-11-18, not yet measured on the real service)
+### Paper cover (2026-11-18; measured on the real service 2026-11-19, see "Verdict" below)
 Retrieval keeps the BM25 top-k. It then appends the best chunk of a paper missing from that top-k, when the question:
 - names one of that paper's own terms (PAPER_TERMS in pipeline.py), or
 - asks about all the papers (ASKS_ALL_PAPERS), or
@@ -241,7 +241,7 @@ The blanket per-paper quota (Step 4b) gains about as much at medium (80.3%) for 
 
 Ratio 0.7 was picked on the eval questions: 0.6 gives the same result with more context, 0.8 less gain.
 
-### Draft rules for multi-paper answers, draft max_tokens 500 (2026-11-18, not yet measured)
+### Draft rules for multi-paper answers, draft max_tokens 500 (2026-11-18; measured 2026-11-19, see "Verdict" below)
 New rules in DRAFT_SYSTEM, each aimed at a failure kind seen on day 2, written generally rather than per question:
 - name the paper for each statement, and never attach one paper's detail to another's model (medium q03);
 - answer for each paper the question asks about, and say which paper the passages don't cover (q18, q19);
@@ -276,3 +276,37 @@ A second grader (a separate LLM agent) regraded the 52 day-2 answers blind to th
 - q05 was regraded wrong in all four runs, including day 1, for consistency.
 - **How grades are corrected now:** in `results/raw/regrades_*.csv`, append-only. Each line names the grade it replaces and why. build_results applies regrades after the original grades and refuses any line whose `previous_grade` doesn't match. The original grade files are untouched.
 - The rubric string for q05 is now "200ms".
+
+### Baseline re-run on the held-out set (2026-11-19)
+The rule "the changes count only if both question sets improve" needs a comparison on the held-out set, and the held-out questions had never run on the system before the changes. `run_eval.py --baseline` re-creates that system (plain top-k retrieval, the old draft prompt with rules 1–4 and 5 sentences, draft `max_tokens` 400), and it runs as scenario `eval_heldout_baseline`. The old prompt is byte-identical to the one in commit 42e6f5e. The check fixes stay in both systems: they correct the measuring tool, not the system being compared.
+
+One run each, same day, paced: final system on q01–q26 (`run_eval_medium_20261119T064116Z`), final system on held-out (`run_eval_heldout_medium_20261119T064735Z`), baseline on held-out (`run_eval_heldout_baseline_medium_20261119T065033Z`). 52 rows, zero 429s; 120b used 97.9K real tokens (61 calls), 20b 25.3K (52 calls). A second repetition was skipped to stay well under the documented 200K tokens/day.
+
+### Verdict on the paper cover and draft rules (2026-11-19)
+Graded with the same written rules as day 2 (7 of 52 grades changed from the rubric's suggestion; reasons in `eval/grades_*_20261119*.csv`). A blind second grader, who saw neither the first grades nor which run an answer came from, agreed on 52/52 (`results/raw/second_grades_20261119T080000Z.csv`).
+
+| | correct | wrong | refused wrongly |
+|---|---|---|---|
+| q01–q26, day 2 (before) | 10 | 8 | 4 |
+| q01–q26, final | 11 | 4 | 7 |
+| held-out, baseline | 4 | 4 | 3 |
+| held-out, final | 4 | 3 | 4 |
+
+- **By the rule fixed before the runs, the changes do not count as helping accuracy.** Paired by question: q01–q26 2 against 1 (exact McNemar p = 1.0), held-out 1 against 1 (p = 1.0).
+- What changed is the kind of failure: wrong answers fell (12 → 7 over both sets) and wrong refusals rose (7 → 11). For a system whose rule is "refuse instead of guessing" that shift is in the right direction, but it is not more correct answers.
+
+### Check fix: arXiv ids are labels (2026-11-19)
+Rule 5 makes the draft name papers by id ("Paper 1706.03762v7"). The check read the id as numbers (1706, 3762, 37, 7955) that the cited passage doesn't contain, and failed the answer. This caused 3 of the final system's wrong refusals on q01–q26 (q03, q18, q19) and 1 on the held-out set (q36). The rule-5 change and the check didn't fit together, and only the real drafts showed it.
+- Fix: `_LABEL_NUM` treats an arXiv id, with or without "Paper"/"arXiv" before it, as a label, like "Paper 1". The id alternative comes first so "Paper 1706" is not cut out of the id.
+- Frozen with the 7 failed drafts in `tests/fixtures/day3_false_check_failures.json`, plus a test that a wrong number next to an id still fails.
+- `scripts/replay_checks.py`: all 183 recorded real-eval checks, old rule against new: 7 fail → pass (exactly these drafts), 0 pass → fail.
+- **This is a bug fix in the measuring tool, made after seeing held-out results.** The recorded runs stay as measured, and the pre-registered verdict above stands. What the fix would have changed is reported separately, as a replay.
+
+### Replay of the fixed check (2026-11-19, not a measurement)
+With the fix, the pipeline would have streamed q18's and q19's first drafts, q03's redraft (its first draft was cut off and still fails) and q36's first draft. Graded by the same rules, and blind by a second grader (4/4 agreement): q03 and q18 correct, q19 and q36 wrong (`results/raw/replay_grades_20261119T090000Z.csv`, outside results.csv because no run produced these rows).
+- q01–q26 would be 13 correct, 5 wrong, 4 refused wrongly; against day 2, 4 against 1 (p = 0.375).
+- held-out unchanged at 4 correct against the baseline's 4.
+- So the replay doesn't change the verdict either: no measurable accuracy gain on the held-out set.
+
+### Final configuration (2026-11-19)
+The paper cover, draft rules 5–8 and draft `max_tokens` 500 stay, with the arXiv-id check fix. They give fewer wrong answers with no measured loss of correct ones, and they are what the final load campaign measures. The claim made for them is only that: fewer wrong answers, not higher accuracy. The v2 load campaign (2026-11-17) measured the earlier configuration and is excluded with that reason.

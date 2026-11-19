@@ -1,0 +1,51 @@
+﻿qid,question,answer,citations,suggested_grade,reason,final_grade
+q27,"How large is the Helium language model, and how much data was it pretrained on?",The three papers do not answer this question.,,refused_wrongly,answerable but refused (refused),
+q28,How much audio is in the dataset used to pretrain Moshi on audio?,"The pre‑training audio data for Moshi consists of about 2000 hours of phone‑conversation recordings (the Fisher dataset) [4].
+
+Sources:
+[4] [2410.00037v1, 4.2 Audio data, p.18]",[4] 2410.00037v1 p.18,wrong,missing facts ['7 million hours']; no citation on a gold paper+page,
+q29,What beam size and length penalty does the Transformer use when decoding?,"- In the machine‑translation experiments, the Transformer decodes with a beam size of 4 and a length‑penalty α = 0.6 [1].  
+- In the English constituency‑parsing experiments, the Transformer decodes with a beam size of 21 and a length‑penalty α = 0.3 [2].
+
+Sources:
+[1] [1706.03762v7, 6.1 Machine Translation, p.8]
+[2] [1706.03762v7, 6.3 English Constituency Parsing, p.10]",[1] 1706.03762v7 p.8; [2] 1706.03762v7 p.10,correct,all facts present; cites a gold paper+page,
+q30,What F1 score did the Transformer reach on WSJ English constituency parsing?,"The Transformer (4‑layer) achieved an F1 score of 91.3 on the WSJ‑only setting [1] and an F1 score of 92.7 when trained in the semi‑supervised setting [2].
+
+Sources:
+[1] [1706.03762v7, 6.3 English Constituency Parsing, p.10]
+[2] [1706.03762v7, 6.3 English Constituency Parsing, p.10]",[1] 1706.03762v7 p.10; [2] 1706.03762v7 p.10,correct,all facts present; cites a gold paper+page,
+q31,"What are the model dimension, number of heads and number of layers of Moshi's Depth Transformer?","Moshi’s Depth Transformer has a model dimension of 1024, uses 16 attention heads, and consists of 6 layers [2][1].
+
+Sources:
+[1] [2410.00037v1, 3.4.1 Hierarchical autoregressive modeling with RQ-Transformer, p.8]
+[2] [2410.00037v1, 3.4.1 Hierarchical autoregressive modeling with RQ-Transformer, p.14]",[1] 2410.00037v1 p.8; [2] 2410.00037v1 p.14,correct,all facts present; cites a gold paper+page,
+q32,How much does H-Net improve on XWinograd-zh compared with the tokenized Transformer?,The three papers do not answer this question.,,refused_wrongly,answerable but refused (refused),
+q33,Why did the Transformer authors choose sinusoidal positional encodings rather than learned ones?,"The authors said they chose the sinusoidal version because they hypothesized it would let the model easily learn to attend by relative positions – for any fixed offset k, PE₍pos+k₎ can be expressed as a linear function of PE₍pos₎ [1]. They also noted that sinusoidal encodings may allow extrapolation to sequence lengths longer than seen during training [1]. When they tried learned positional embeddings, the results were nearly identical to the sinusoidal baseline, so the sinusoidal choice was retained for its potential advantages [1][3].
+
+Sources:
+[1] [1706.03762v7, 3.5 Positional Encoding, p.6]
+[3] [1706.03762v7, 6.2 Model Variations, p.9]",[1] 1706.03762v7 p.6; [3] 1706.03762v7 p.9,wrong,missing facts ['extrapolate'] | review (2026-11-19): both key facts present: extrapolation to longer sequences and learned embeddings nearly identical (rubric missed 'extrapolation'),correct
+q34,Why are H-Net's encoder and decoder built mainly from Mamba-2 layers?,"The authors found that Mamba‑2 layers give a clear advantage for the main‑network processing stage: in ablation studies Mamba layers remained “significantly important even when processing BPE tokens rather than raw bytes,” supporting the idea that they are better at compressing information for the next stage (hypothesis (ii))[2].  
+Consequently, the H‑Net design uses a 1‑stage encoder‑decoder that “uses 4 Mamba‑2 layers without MLPs for both the encoder and decoder” to take advantage of this compression benefit[5].  
+Additionally, the H‑Net encoder architecture that includes Mamba‑2 layers slightly outperforms a pure Transformer encoder, further motivating the choice[3].
+
+Sources:
+[2] [2507.07955v2, 3.3 Ablation Studies, p.19]
+[3] [2507.07955v2, 3.2 Alternate Language Datasets, p.17]
+[5] [2507.07955v2, F Distilling Token-Level Models to Byte-Level, p.37]",[2] 2507.07955v2 p.19; [3] 2507.07955v2 p.17; [5] 2507.07955v2 p.37,wrong,"missing facts ['fine-grained inputs', 'uncompressed sequences', 'inductive bias']; no citation on a gold paper+page",
+q35,"How does the base Transformer compare in size with Moshi's Temporal Transformer (model dimension, layers, heads)?",The three papers do not answer this question.,,refused_wrongly,answerable but refused (refused),
+q36,How large are the training batches in each of the three papers?,"I could not produce an answer I can verify against the papers. These are the passages I found:
+[1] [2410.00037v1, 4.4 Training stages and hyper-parameters, p.20] We mask the corresponding text tokens with a probability of 30%. We randomize the delay between the text and audio tokens between -0.6 and +0.6 seconds. In order to prevent catastrophic forgetting, we also train half of the time on batches of text only data from the same dataset as used for Helium. ...
+[2] [2507.07955v2, 3.3 Ablation Studies, p.17] 3.3 Ablation Studies For ablation studies, we employ H-Net at Large scale following the configurations in Table 1, training on 36B tokens randomly sampled from FineWeb-Edu. Importance of Components in H-Net. Figure 7 illustrates the impact of each architectural component on both model performance an...
+[3] [1706.03762v7, 5.4 Regularization, p.7] 5.4 Regularization We employ three types of regularization during training:
+[4] [2410.00037v1, 4.4 Training stages and hyper-parameters, pp.20-21] Moshi finetuning. The previously described simulated multi-stream provides a good pre-training task but is far from being sufficient to capture natural conversations: For instance, it contains no overlap, and the stream of an inactive speaker is perfectly silent. We then use the Fisher dataset (Cier...
+[5] [2410.00037v1, 3.4.1 Hierarchical autoregressive modeling with RQ-Transformer, p.8] Table 1: Models’ hyperparameters. Hyperparameters for the architecture and training of our 7B-parameter Helium language model and of Moshi, our speech-text dialogue model. The training of Moshi goes through 4 phases: Pre-training on unsupervised data (with Temporal Transformer initialized from Heliu...",,refused_wrongly,answerable but refused (refused_check_failed),
+q37,"What is dropout used for, and at what rate?","- In the Transformer paper (arXiv 1706.03762v7) dropout is applied to the output of each sub‑layer before it is added to the sub‑layer input and normalized, and also to the sums of the embeddings and positional encodings in both encoder and decoder stacks; the base model uses a dropout rate P_drop = 0.1[1].  
+- The same paper reports that the big Transformer model for English‑to‑French also uses a dropout rate P_drop = 0.1 (instead of 0.3)[4].
+
+Sources:
+[1] [1706.03762v7, 5.4 Regularization, p.8]
+[4] [1706.03762v7, 6.1 Machine Translation, p.8]",[1] 1706.03762v7 p.8; [4] 1706.03762v7 p.8,wrong,missing facts ['quantizer dropout'],
+q38,What BLEU score does the Transformer achieve on WMT 2014 German-to-English?,The three papers do not answer this question.,,refused_correctly,unanswerable and refused (refused),
+q39,What dropout rate does H-Net use?,The three papers do not answer this question.,,refused_correctly,unanswerable and refused (refused),
